@@ -1163,14 +1163,10 @@ class MuonPerformanceMetricClippingness(Histogram1DPlotter):
         ylim:       tuple[float, float | None] | None = None,
         **kwargs:   Any
     ) -> None:
-        super().__init__(
-            bins    = uniform_bins(0.0 * 0.0, 18.0 * 18.0, 9), 
-            xlabel  = r"$R_{\mu}^{2}$ (m$^{2}$)", 
-            ylabel  = ylabel, 
-            xlim    = (0.0 * 0.0, 18.0 * 18.0), 
-            ylim    = ylim, 
-            **kwargs, 
-        )
+        kwargs.setdefault("bins",   uniform_bins(0.0 * 0.0, 18.0 * 18.0, 9))
+        kwargs.setdefault("xlim",   (0.0 * 0.0, 18.0 * 18.0))
+        kwargs.setdefault("xlabel", r"$R_{\mu}^{2}$ (m$^{2}$)")
+        super().__init__(ylabel=ylabel, ylim=ylim, **kwargs)
 
     def add(
         self,
