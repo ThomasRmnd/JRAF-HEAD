@@ -4,7 +4,10 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
-from config import (
+from matplotlib.gridspec import GridSpec
+from matplotlib.ticker import AutoMinorLocator
+
+from jrafhead.config import (
     BLACK,
     CUSTOM_MARKEDRED,
     DELAYED_ENERGY_BINS,
@@ -17,15 +20,8 @@ from config import (
     PROMPT_ENERGY_BINS_NMO,
     PROMPT_ENERGY_BINS_UNIFORM,
 )
-from loader import (
-    MCChengzhuoTemplateHistogram,
-    MCGroupCTemplateHistogram,
-)
-from matplotlib.gridspec import GridSpec
-from matplotlib.ticker import AutoMinorLocator
-from utils import (
-    uniform_bins,
-)
+from jrafhead.loader import MCChengzhuoTemplateHistogram, MCGroupCTemplateHistogram
+from jrafhead.utils import uniform_bins
 
 from .base import BasePlotter
 
@@ -1132,13 +1128,11 @@ class MuonPerformanceAngle(Histogram1DPlotter):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(
-            bins    = MUON_PERFORMANCE_ANGLE_BINS,
-            xlabel  = r"$\alpha$ (deg)",
-            ylabel  = "Entries",
-            xlim    = (0, 5.05),
-            **kwargs,
-        )
+        kwargs.setdefault("bins",   MUON_PERFORMANCE_ANGLE_BINS)
+        kwargs.setdefault("xlim",   (0.0, 5.0))
+        kwargs.setdefault("xlabel", r"$\alpha$ (deg)")
+        kwargs.setdefault("ylabel", r"Entries")
+        super().__init__(**kwargs)
 
 
 class MuonPerformanceDistance(Histogram1DPlotter):
@@ -1147,13 +1141,11 @@ class MuonPerformanceDistance(Histogram1DPlotter):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        super().__init__(
-            bins    = MUON_PERFORMANCE_DISTANCE_BINS,
-            xlabel  = r"$d_{\mathrm{mid}}$ (m)",
-            ylabel  = "Entries",
-            xlim    = (0, 2.02),
-            **kwargs,
-        )
+        kwargs.setdefault("bins",   MUON_PERFORMANCE_DISTANCE_BINS)
+        kwargs.setdefault("xlim",   (0.0, 2.0))
+        kwargs.setdefault("xlabel", r"$d_{\mathrm{mid}}$ (m)")
+        kwargs.setdefault("ylabel", r"Entries")
+        super().__init__(**kwargs)
 
 
 # -------------------------------------------------------------------------------------------------

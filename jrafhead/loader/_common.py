@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from utils import Timestamp
+from jrafhead.utils import Timestamp
 
 
 def _build_timestamps(sec: np.ndarray, nsec: np.ndarray) -> np.ndarray:

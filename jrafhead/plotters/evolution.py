@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Rectangle
 from matplotlib.ticker import AutoMinorLocator, FuncFormatter
-from utils import FusionMode, fuze_by_day
+
+from jrafhead.utils import FusionMode, fuze_by_day
 
 # -------------------------------------------------------------------------------------------------
 # Dataset container

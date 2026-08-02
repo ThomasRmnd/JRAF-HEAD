@@ -10,6 +10,7 @@ BLACK               = "#000000"
 
 CUSTOM_BLUE         = "#648fff"
 CUSTOM_RED          = "#ff6464"
+CUSTOM_GREEN        = "#84d040"
 CUSTOM_PINK         = "#d288db"
 CUSTOM_DARKPINK     = "#db2180"
 CUSTOM_LIGHTBLUE    = "#00BFFF"

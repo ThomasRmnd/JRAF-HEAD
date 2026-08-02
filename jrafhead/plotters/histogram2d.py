@@ -4,14 +4,15 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
-from config import (
+from matplotlib.gridspec import GridSpec
+from matplotlib.ticker import AutoMinorLocator
+
+from jrafhead.config import (
     BLACK,
     CUSTOM_FAINTBLUE,
     SPATIAL_RHO2_BINS,
     SPATIAL_Z_BINS,
 )
-from matplotlib.gridspec import GridSpec
-from matplotlib.ticker import AutoMinorLocator
 
 from .base import BasePlotter
 
