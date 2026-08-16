@@ -59,7 +59,8 @@ class Histogram1DPlotter(BasePlotter):
         self,
         bins:           np.ndarray, 
         legend_ncol:    int = 1, 
-        legend_loc:     str = "upper right", 
+        legend_loc:     str = "upper right",
+        show_steps:     bool = False, 
         show_errors:    bool = True, 
         **kwargs:       Any,
     ) -> None:
@@ -70,6 +71,7 @@ class Histogram1DPlotter(BasePlotter):
         self.datasets: list[_Dataset]   = []
         self.legend_ncol                = legend_ncol
         self.legend_loc                 = legend_loc
+        self.show_steps                 = show_steps
         self.show_errors                = show_errors
 
     # ---------------------------------------------------------------------------------------------
@@ -240,17 +242,7 @@ class Histogram1DPlotter(BasePlotter):
                 fmt="o", color=d["linecolor"],
                 markersize=4.5, zorder=3,
             )
-
-        if d["fillcolor"]:
-            ax.fill_between(
-                self.bins,
-                np.r_[d["hist"], d["hist"][-1]],
-                step="post",
-                color=d["fillcolor"],
-                zorder=1,
-                alpha=d["alpha"], 
-            )
-        else:
+        if self.show_steps:
             ax.step(
                 self.bins,
                 np.r_[d["hist"], d["hist"][-1]],
@@ -260,6 +252,16 @@ class Histogram1DPlotter(BasePlotter):
                 linewidth=1.2,
                 label=d["label"] if not self.show_errors else None,
                 zorder=2,
+            )
+
+        if d["fillcolor"]:
+            ax.fill_between(
+                self.bins,
+                np.r_[d["hist"], d["hist"][-1]],
+                step="post",
+                color=d["fillcolor"],
+                zorder=1,
+                alpha=d["alpha"], 
             )
 
     # ---------------------------------------------------------------------------------------------
