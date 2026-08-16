@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import matplotlib.dates as mdates
@@ -308,6 +308,7 @@ class _EvolutionPlotterBase:
         ax.minorticks_on()
         self._configure_xaxis(ax)
         ax.yaxis.set_minor_locator(AutoMinorLocator(5))
+        ax.grid(which="major", linestyle="--", linewidth=0.5, alpha=0.7)
 
     def _draw_legend(self, ax: plt.Axes) -> None:
         labeled = [ds for ds in self.datasets if ds.label is not None]
@@ -395,15 +396,17 @@ class TimeEvolutionPlotter(_EvolutionPlotterBase):
     """
 
     # One matplotlib date unit = one day, so bar width = 1.0 fills each day slot.
+    _BAR_WIDTH      = 1.0 # fraction of one run-ID unit
     _BAR_WIDTH_DAYS = 0.8
 
     def __init__(
         self,
-        ylabel:      str                                            = "",
-        xlim:        tuple[str | datetime, str | datetime] | None   = None,
-        ylim:        tuple[float, float] | None                     = None,
-        mode:        FusionMode                                     = "mean",
-        date_format: str                                            = "%Y-%m-%d",
+        ylabel:       str                                            = "",
+        xlim:         tuple[str | datetime, str | datetime] | None   = None,
+        ylim:         tuple[float, float] | None                     = None,
+        mode:         FusionMode                                     = "mean",
+        date_format:  str                                            = "%Y-%m-%d",
+        fuze_by_date: bool                                           = True,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -413,8 +416,9 @@ class TimeEvolutionPlotter(_EvolutionPlotterBase):
             ylim=ylim,
             **kwargs,
         )
-        self._mode        = mode
-        self._date_format = date_format
+        self._mode         = mode
+        self._date_format  = date_format
+        self._fuze_by_date = fuze_by_date
 
     @staticmethod
     def _to_num_xlim(
@@ -437,8 +441,12 @@ class TimeEvolutionPlotter(_EvolutionPlotterBase):
         err: np.ndarray,
     ) -> tuple[list[datetime], np.ndarray, np.ndarray, float]:
         """Fuse per-run data into one point per day, then return with bar width."""
-        dates, y_fused, err_fused = fuze_by_day(x, y, err, mode=self._mode)
-        return dates, y_fused, err_fused, self._BAR_WIDTH_DAYS
+        if self._fuze_by_date:
+            dates, y_fused, err_fused = fuze_by_day(x, y, err, mode=self._mode)
+            return dates, y_fused, err_fused, self._BAR_WIDTH_DAYS
+        else:
+            dates = [datetime.fromtimestamp(float(ts), tz=timezone.utc) for ts in x]
+            return dates, y, err, self._BAR_WIDTH
 
     def _configure_xaxis(self, ax: plt.Axes) -> None:
         fmt = self._date_format

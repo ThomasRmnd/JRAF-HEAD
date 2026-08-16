@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone, date
+from datetime import date, datetime, timezone
 from typing import Literal
 
 import numpy as np
-
 
 FusionMode = Literal["mean", "sum"]
 

@@ -242,7 +242,7 @@ class Histogram1DPlotter(BasePlotter):
                 step="post",
                 color=d["fillcolor"],
                 zorder=1,
-                alpha=0.15, 
+                alpha=0.10, 
             )
         else:
             ax.step(
@@ -1011,7 +1011,7 @@ class Li9He8RateEstimationPlotter(Histogram1DPlotter):
     def __init__(self, **kwargs: Any) -> None:
         kwargs.setdefault("bins",   uniform_bins(0.0, 5.0, 100))
         kwargs.setdefault("xlim",   (0.0, 5.0))
-        kwargs.setdefault("xlabel", r"$\Delta t_{\mu-p}$ (s)")
+        kwargs.setdefault("xlabel", r"$\Delta t^{\mathrm{latest}}_{\mu-p}$ (s)")
         kwargs.setdefault("ylabel", r"Entries")
         super().__init__(**kwargs)
 

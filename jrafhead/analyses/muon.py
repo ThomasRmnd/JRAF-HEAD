@@ -79,6 +79,10 @@ class MuonPerformanceAnalysis(BaseAnalysis):
         self._plot_distance_vs_run()
         self._plot_angle_vs_time()
         self._plot_distance_vs_time()
+        self._plot_angle_vs_run_subset()
+        self._plot_distance_vs_run_subset()
+        self._plot_angle_vs_time_subset()
+        self._plot_distance_vs_time_subset()
         plt.show()
 
     # ---------------------------------------------------------------------------------------------
@@ -348,6 +352,205 @@ class MuonPerformanceAnalysis(BaseAnalysis):
 
         fig, _ = plotter.plot()
         save_figure(fig, self.stem, "_distance_vs_time", output_dir=self.output_dir)
+        plt.close(fig)
+
+    def _plot_angle_vs_run_subset(self) -> None:
+        plotter = RunEvolutionPlotter(
+            r"$68^{\mathrm{th}}$ percentile of $\alpha$ (deg)", 
+            xlim=(10550, 11000),
+            ylim=(0.0, 5.0),
+            show_mean=True, 
+            show_band=True,
+            legend_ncol=1,
+            legend_bbox=(0.85, 0.95),
+        )
+
+        for phase in ReProd26B.phases:
+            if phase.name != "Phase 1":
+                continue
+            mask = np.logical_and(
+                10550 <= self._data.run_id,
+                self._data.run_id <= 11000,
+            )
+            if bool(np.all(np.logical_not(mask))):
+                continue
+
+            runs = np.unique(self._data.run_id[mask])
+            perc68 = np.array([
+                np.quantile(
+                    self._data.angle[self._data.run_id == run], 
+                    0.68
+                )
+                for run in runs
+            ])
+
+            mean_angle  = np.mean(perc68)
+            std_angle   = np.std(perc68)
+
+            plotter.add(
+                runs, 
+                perc68, 
+                np.zeros_like(perc68), 
+                CUSTOM_BLUE,
+                r"$\bar{\alpha} = " f"{mean_angle:.1f}" r" \pm " f"{std_angle:.1f}" r"^{\circ}$",
+            )
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_subset_angle_vs_run", output_dir=self.output_dir)
+        plt.close(fig)
+
+    def _plot_distance_vs_run_subset(self) -> None:
+        plotter = RunEvolutionPlotter(
+            r"$68^{\mathrm{th}}$ percentile of $d_{\mathrm{mid}}$ (m)", 
+            xlim=(10550, 11000),
+            ylim=(0.0, 2.0),
+            show_mean=True, 
+            show_band=True,
+            legend_ncol=1,
+            legend_bbox=(0.85, 0.95),
+        )
+
+        for phase in ReProd26B.phases:
+            if phase.name != "Phase 1":
+                continue
+            mask = np.logical_and(
+                10550 <= self._data.run_id,
+                self._data.run_id <= 11000,
+            )
+            if bool(np.all(np.logical_not(mask))):
+                continue
+
+            runs = np.unique(self._data.run_id[mask])
+            perc68 = np.array([
+                np.quantile(
+                    self._data.distance[self._data.run_id == run], 
+                    0.68
+                )
+                for run in runs
+            ])
+
+            mean_angle  = np.mean(perc68)
+            std_angle   = np.std(perc68)
+
+            plotter.add(
+                runs, 
+                perc68, 
+                np.zeros_like(perc68), 
+                CUSTOM_RED,
+                r"$\bar{d}_{\mathrm{mid}} = " f"{mean_angle:.2f}" r" \pm " f"{std_angle:.2f}" r"$~m",
+            )
+
+        fig, _ = plotter.plot()
+
+        save_figure(fig, self.stem, "_subset_distance_vs_run", output_dir=self.output_dir)
+        plt.close(fig)
+
+    def _plot_angle_vs_time_subset(self) -> None:
+        plotter = TimeEvolutionPlotter(
+            r"$68^{\mathrm{th}}$ percentile of $\alpha$ (deg)",
+            xlim=(
+                datetime.fromisoformat("2025-10-08"),
+                datetime.fromisoformat("2025-10-31"),
+            ),
+            ylim=(0.0, 5.0),
+            show_mean=True,
+            show_band=True,
+            legend_ncol=1,
+            legend_bbox=(0.85, 0.95),
+            fuze_by_date=False,
+        )
+
+        for phase in ReProd26B.phases:
+            if phase.name != "Phase 1":
+                continue
+            mask = np.logical_and(
+                10550 <= self._data.run_id,
+                self._data.run_id <= 11000,
+            )
+            if bool(np.all(np.logical_not(mask))):
+                continue
+
+            runs = np.unique(self._data.run_id[mask])
+            perc68 = np.array([
+                np.quantile(
+                    self._data.angle[self._data.run_id == run], 
+                    0.68
+                )
+                for run in runs
+            ])
+
+            start_sec = np.array([
+                self._data_daq.start_sec[self._data_daq.run_id == run][0]
+                for run in runs
+            ])
+
+            mean_angle  = np.mean(perc68)
+            std_angle   = np.std(perc68)
+
+            plotter.add(
+                start_sec,
+                perc68,
+                np.zeros_like(perc68),
+                CUSTOM_BLUE,
+                r"$\bar{\alpha} = " f"{mean_angle:.1f}" r" \pm " f"{std_angle:.1f}" r"^{\circ}$",
+            )
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_subset_angle_vs_time", output_dir=self.output_dir)
+        plt.close(fig)
+
+    def _plot_distance_vs_time_subset(self) -> None:
+        plotter = TimeEvolutionPlotter(
+            r"$68^{\mathrm{th}}$ percentile of $d_{\mathrm{mid}}$ (m)",
+            xlim=(
+                datetime.fromisoformat("2025-10-08"),
+                datetime.fromisoformat("2025-10-31"),
+            ),
+            ylim=(0.0, 2.0),
+            show_mean=True,
+            show_band=True,
+            legend_ncol=1,
+            legend_bbox=(0.85, 0.95),
+            fuze_by_date=False,
+        )
+
+        for phase in ReProd26B.phases:
+            if phase.name != "Phase 1":
+                continue
+            mask = np.logical_and(
+                10550 <= self._data.run_id,
+                self._data.run_id <= 11000,
+            )
+            if bool(np.all(np.logical_not(mask))):
+                continue
+
+            runs = np.unique(self._data.run_id[mask])
+            perc68 = np.array([
+                np.quantile(
+                    self._data.distance[self._data.run_id == run], 
+                    0.68
+                )
+                for run in runs
+            ])
+
+            start_sec = np.array([
+                self._data_daq.start_sec[self._data_daq.run_id == run][0]
+                for run in runs
+            ])
+
+            mean_angle  = np.mean(perc68)
+            std_angle   = np.std(perc68)
+
+            plotter.add(
+                start_sec,
+                perc68,
+                np.zeros_like(perc68),
+                CUSTOM_RED,
+                r"$\bar{d}_{\mathrm{mid}} = " f"{mean_angle:.2f}" r" \pm " f"{std_angle:.2f}" r"$~m",
+            )
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_subset_distance_vs_time", output_dir=self.output_dir)
         plt.close(fig)
 
 # -------------------------------------------------------------------------------------------------

@@ -1,4 +1,10 @@
+import argparse
+
 import numpy as np
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--input", nargs=2, type=float, default=(12608.3, 238.3), help="Input total number of comosgenic with its uncertainty")
+args = parser.parse_args()
 
 neutron_accompanying_effiency      = 0.9572125786132055
 neutron_accompanying_effiency_stat = 0.005804800228724907
@@ -10,7 +16,7 @@ selection_table_efficiency = {
     "delayed_energy":           99.90 / 100.0,
     "prompt_delayed_distance":  99.16 / 100.0,
     "prompt_delayed_time":      96.95 / 100.0,
-    "multiplicity":             98.58 / 100.0,
+    "multiplicity":             97.60 / 100.0,
 }
 
 selection_table_relerr = {
@@ -26,8 +32,8 @@ selection_error = selection_efficiency * selection_relerr
 
 lifetime = 208.08473379629631
 
-ncosmo_fitted       = 12608.3
-ncosmo_fitted_error = 238.3
+ncosmo_fitted       = args.input[0]
+ncosmo_fitted_error = args.input[1]
 
 rate_fitted       = ncosmo_fitted / lifetime
 rate_fitted_error = ncosmo_fitted_error / lifetime

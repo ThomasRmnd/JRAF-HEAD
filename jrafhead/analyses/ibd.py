@@ -22,6 +22,7 @@ from plotters import (
     PromptDelayedDistancePlotter,
     PromptDelayedTimePlotter,
     PromptEnergyPlotter,
+    RunEvolutionPlotter,
     SpatialDistributionPlotter,
     TimeEvolutionPlotter,
 )
@@ -90,7 +91,8 @@ class IBDAnalysis(BaseAnalysis):
         self._plot_muon_veto()
         self._plot_cosmo_rate_with_neu()
         self._plot_cosmo_rate()
-        self._plot_rate()
+        self._plot_rate_by_run()
+        self._plot_rate_by_date()
 
         del self._data_daq
         del self._data_veto
@@ -214,7 +216,73 @@ class IBDAnalysis(BaseAnalysis):
         save_figure(fig, self.stem, "_dt_last_mu", output_dir=self.output_dir)
         plt.close(fig)
 
-    def _plot_rate(self) -> None:
+    def _plot_rate_by_run(self) -> None:
+        # Calculate the lifetime per run
+        duration_dict = dict(zip(self._data_daq.run_id, self._data_daq.duration_sec))
+            
+        veto_dict = defaultdict(float)
+        for run, veto_sec in zip(self._data_veto.run_id, self._data_veto.sec):
+            veto_dict[run] += veto_sec
+    
+        runs = np.array(sorted(duration_dict.keys()))
+    
+        lifetime = np.array([
+            duration_dict[run] - veto_dict.get(run, 0.0)
+            for run in runs
+        ])
+    
+        # Calculate the number of accidental per run
+        ibd_count = Counter(self._data.run_id)
+    
+        nibd = np.array([
+            ibd_count.get(run, 0)
+            for run in runs
+        ])
+    
+        plotter = RunEvolutionPlotter(
+            r"Accidental rate (cpd)", 
+            ylim=(0.0, None),
+            show_mean=False,
+            show_band=False,
+            legend_ncol=2,
+        )
+    
+        for phase in ReProd26B.phases:
+            mask = np.logical_and(
+                phase.run_min <= runs,
+                runs <= phase.run_max
+            )
+    
+            if bool(np.all(np.logical_not(mask))):
+                continue
+    
+            rate = nibd[mask] / (lifetime[mask] / (24.0 * 3600.0))
+            err = np.sqrt(nibd[mask]) / (lifetime[mask] / (24.0 * 3600.0))
+    
+            mean_rate  = np.mean(rate)
+            std_rate   = np.sqrt(np.mean(err**2))
+    
+            plotter.add(
+                runs[mask],
+                rate,
+                err,
+                phase.color,
+                rf"{phase.name}: ${mean_rate:.2f} \pm {std_rate:.2f}$~cpd",
+            )
+    
+            plotter.add_region(
+                phase.run_min,
+                phase.run_max,
+                phase.color,
+                phase.name,
+                2, 0.80, 20, 0.0
+            )
+    
+            fig, _ = plotter.plot()
+            save_figure(fig, self.stem, "_per_run", output_dir=self.output_dir)
+            plt.close(fig)
+
+    def _plot_rate_by_date(self) -> None:
         # Calculate the lifetime per run
         daq_time = dict(zip(self._data_daq.run_id, self._data_daq.duration_sec))
         
