@@ -81,6 +81,7 @@ class Histogram1DPlotter(BasePlotter):
         data:       np.ndarray,
         linecolor:  str,
         fillcolor:  str | None = None,
+        alpha:      float      = 0.15,
         linestyle:  str | None = None,
         label:      str | None = None,
     ) -> None:
@@ -104,6 +105,7 @@ class Histogram1DPlotter(BasePlotter):
             np.sqrt(hist),
             linecolor, 
             fillcolor=fillcolor, 
+            alpha=alpha, 
             linestyle=linestyle, 
             label=label
         )
@@ -114,6 +116,7 @@ class Histogram1DPlotter(BasePlotter):
         data2:      np.ndarray,
         linecolor:  str,
         fillcolor:  str | None = None,
+        alpha:      float      = 0.15,
         linestyle:  str | None = None,
         label:      str | None = None,
     ) -> None:
@@ -148,6 +151,7 @@ class Histogram1DPlotter(BasePlotter):
             err,
             linecolor,
             fillcolor=fillcolor,
+            alpha=alpha, 
             linestyle=linestyle,
             label=label
         )
@@ -158,6 +162,7 @@ class Histogram1DPlotter(BasePlotter):
         err:        np.ndarray,
         linecolor:  str,
         fillcolor:  str | None = None,
+        alpha:      float      = 0.15,
         linestyle:  str | None = None,
         label:      str | None = None,
     ) -> None:
@@ -182,6 +187,7 @@ class Histogram1DPlotter(BasePlotter):
             "err":          err,
             "linecolor":    linecolor,
             "fillcolor":    fillcolor,
+            "alpha":        alpha,
             "linestyle":    linestyle,
             "label":        label,
         })
@@ -242,7 +248,7 @@ class Histogram1DPlotter(BasePlotter):
                 step="post",
                 color=d["fillcolor"],
                 zorder=1,
-                alpha=0.15, 
+                alpha=d["alpha"], 
             )
         else:
             ax.step(
