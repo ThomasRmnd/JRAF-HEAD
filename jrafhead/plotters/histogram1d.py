@@ -242,7 +242,7 @@ class Histogram1DPlotter(BasePlotter):
                 step="post",
                 color=d["fillcolor"],
                 zorder=1,
-                alpha=0.10, 
+                alpha=0.15, 
             )
         else:
             ax.step(
