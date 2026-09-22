@@ -19,6 +19,8 @@ from .multiplicity import (
     MultiplicityAnalysis,
 )
 from .muon import (
+    MuonLengthAnalysis,
+    MuonMultiplicityAnalysis,
     MuonPerformanceAnalysis,
     MuonRateAnalysis,
 )

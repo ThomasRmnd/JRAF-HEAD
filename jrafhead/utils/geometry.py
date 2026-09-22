@@ -4,13 +4,11 @@ from dataclasses import dataclass
 
 import numpy as np
 
-
 # ---------------------------------------------------------------------------
 # Unit conversion
 # ---------------------------------------------------------------------------
 
 _MM_TO_M = 1e-3  # reconstruction positions are in mm, plots are in m
-
 
 # ---------------------------------------------------------------------------
 # Individual calculators
@@ -33,7 +31,6 @@ def compute_rho2(pos_mm: np.ndarray) -> np.ndarray:
     xy_m = pos_mm[:, :2] * _MM_TO_M
     return np.sum(xy_m ** 2, axis=1)
 
-
 def compute_z(pos_mm: np.ndarray) -> np.ndarray:
     """
     Axial coordinate z in metres.
@@ -49,7 +46,6 @@ def compute_z(pos_mm: np.ndarray) -> np.ndarray:
         z in metres.
     """
     return pos_mm[:, 2] * _MM_TO_M
-
 
 def compute_3d_distance(pos_a_mm: np.ndarray, pos_b_mm: np.ndarray) -> np.ndarray:
     """
@@ -72,7 +68,6 @@ def compute_3d_distance(pos_a_mm: np.ndarray, pos_b_mm: np.ndarray) -> np.ndarra
     delta_m = (pos_a_mm - pos_b_mm) * _MM_TO_M
     return np.linalg.norm(delta_m, axis=1)
 
-
 # ---------------------------------------------------------------------------
 # Composite result object
 # ---------------------------------------------------------------------------
@@ -91,7 +86,6 @@ class PositionGeometry:
     """
     rho2_m2: np.ndarray
     z_m: np.ndarray
-
 
 def compute_geometry(pos_mm: np.ndarray) -> PositionGeometry:
     """

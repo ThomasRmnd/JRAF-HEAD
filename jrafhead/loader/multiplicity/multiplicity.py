@@ -1,11 +1,7 @@
-from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
 import uproot
-
-from ._common import _stack_timestamps, _stack_positions
-
 
 # -------------------------------------------------------------------------------------------------
 # Multiplicity
@@ -18,12 +14,9 @@ _MULTIPLICITY_BRANCHES = [
     "e", 
 ]
 
-
 @dataclass
 class MultiplicityData:
-    """
-    Arrays of the multiplicity analysis.
-    """
+    """ Arrays of the multiplicity analysis. """
     run_id: np.ndarray # (N,)   int     Run number
     sec:    np.ndarray # (N,)   int     Timestamp second
     nsec:   np.ndarray # (N,)   int     Timestamp nanosecond
@@ -32,11 +25,8 @@ class MultiplicityData:
     posz:   np.ndarray # (N,)   float   Position z
     e:      np.ndarray # (N,)   float   Energy
 
-
 def load_multiplicity(filepath: str, dirpath: str) -> MultiplicityData:
-    """
-    Load and prepare all arrays for the multiplicity analysis.
-    """
+    """ Load and prepare all arrays for the multiplicity analysis. """
     file = uproot.open(filepath)
     raw = file[f"{dirpath}/events"].arrays(_MULTIPLICITY_BRANCHES, library="np")
 

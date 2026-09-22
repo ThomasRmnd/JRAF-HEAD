@@ -5,10 +5,6 @@ from jrafhead.utils import (
     uniform_bins,
 )
 
-# ---------------------------------------------------------------------------
-# Named standard binnings used across multiple plotters
-# ---------------------------------------------------------------------------
-
 #: Prompt energy binnings
 PROMPT_ENERGY_BINS_UNIFORM:         np.ndarray = uniform_bins(0.0, 12.0, 100)
 PROMPT_ENERGY_BINS_207DAYS:         np.ndarray = np.array([

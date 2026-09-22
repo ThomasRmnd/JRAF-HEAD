@@ -23,7 +23,6 @@ class Phase:
     date_max:   str
     color:      str
 
-
 @dataclass(frozen=True)
 class Campaign:
     """

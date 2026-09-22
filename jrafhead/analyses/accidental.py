@@ -31,6 +31,7 @@ from plotters import (
     PromptEnergyPlotter,
     RelativeUncertaintyPromptEnergyPlotter,
     RunEvolutionPlotter,
+    ShapeComparisonPlotter,
     SpatialDistributionPlotter,
     TimeEvolutionPlotter,
 )
@@ -94,6 +95,7 @@ class AccidentalAnalysis(BaseAnalysis):
         self._plot_prompt_energy_nmo()
         self._plot_prompt_energy_207days()
         self._plot_prompt_energy_normal()
+        self._plot_comparison_phases()
         self._plot_relative_uncertainty_prompt_energy_nmo()
         self._plot_relative_uncertainty_prompt_energy_207days()
         self._plot_relative_uncertainty_prompt_energy_normal()
@@ -132,6 +134,32 @@ class AccidentalAnalysis(BaseAnalysis):
         save_figure(fig, self.stem, "_e_p_normal", output_dir=self.output_dir)
         plt.close(fig)
 
+    def _plot_comparison_phases(self) -> None:
+        bins    = uniform_bins(0.7, 3.5, 150)
+        plotter = ShapeComparisonPlotter(
+            bins=bins,
+            xlim=(0.7, 3.5),
+            density=True,
+            show_steps=True,
+            show_errors=False,
+            compare_mean=False,
+        )
+
+        for phase in ReProd26B.phases:
+            mask = np.logical_and(
+                phase.run_min <= self._data.run_id,
+                self._data.run_id <= phase.run_max
+            )
+
+            if bool(np.all(np.logical_not(mask))):
+                continue
+
+            plotter.add(self._data.e_p[mask], phase.color, label=phase.name)
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_e_p_comparison_phases", output_dir=self.output_dir)
+        plt.close(fig)
+
     def _plot_relative_uncertainty_prompt_energy_nmo(self) -> None:
         tot_daq      = np.sum([Timestamp(sec, nsec) for sec, nsec in zip(self._data_daq.duration_sec, self._data_daq.duration_nsec)])
         tot_lifetime = tot_daq.to_sec() / 3600.0 / 24.0
@@ -148,7 +176,7 @@ class AccidentalAnalysis(BaseAnalysis):
         tot, _ = np.histogram(self._data.e_p, bins=PROMPT_ENERGY_BINS_NMO)
         toterr = np.sqrt(tot)
 
-        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="nmo")
+        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="nmo", show_steps=True)
         for Y_days, label, color in zip(periods_days, labels, colors):
             relerr = relative_uncertainty_rescale(tot, toterr, Y_days, tot_lifetime)
             plotter.add_histogram(
@@ -175,7 +203,7 @@ class AccidentalAnalysis(BaseAnalysis):
         tot, _ = np.histogram(self._data.e_p, bins=PROMPT_ENERGY_BINS_207DAYS)
         toterr = np.sqrt(tot)
 
-        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="207days")
+        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="207days", show_steps=True)
         for Y_days, label, color in zip(periods_days, labels, colors):
             relerr = relative_uncertainty_rescale(tot, toterr, Y_days, tot_lifetime)
             plotter.add_histogram(
@@ -202,7 +230,7 @@ class AccidentalAnalysis(BaseAnalysis):
         tot, _ = np.histogram(self._data.e_p, bins=PROMPT_ENERGY_BINS_UNIFORM)
         toterr = np.sqrt(tot)
 
-        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="normal", legend_loc="upper center", legend_ncol=2)
+        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="normal", show_steps=True, legend_loc="upper center", legend_ncol=2)
         for Y_days, label, color in zip(periods_days, labels, colors):
             relerr = relative_uncertainty_rescale(tot, toterr, Y_days, tot_lifetime)
             plotter.add_histogram(
@@ -367,10 +395,12 @@ class AccidentalAnalysis(BaseAnalysis):
 
         plotter = TimeEvolutionPlotter(
             r"Accidental rate (cpd)", 
+            date_format="%Y-%m", 
             ylim=(0.0, None),
             mode="sum", 
             show_mean=False,
             show_band=False,
+            show_grid=False,
             legend_ncol=2,
         )
 

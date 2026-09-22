@@ -1,5 +1,8 @@
 import numpy as np
 
+# ---------------------------------------------------------------------------
+# Binning helpers
+# ---------------------------------------------------------------------------
 
 def nmo_analysis_bins(edges: np.ndarray, nbins: np.ndarray) -> np.ndarray:
     """

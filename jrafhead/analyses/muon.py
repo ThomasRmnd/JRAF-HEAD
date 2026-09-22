@@ -2,36 +2,45 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+import matplotlib.colors as mcolors
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
-from config import (
+
+from jrafhead.config import (
     BLACK,
     CUSTOM_BLUE,
+    CUSTOM_GREEN,
     CUSTOM_RED,
     GOOGLE_BLUE,
     GOOGLE_GREEN,
     GOOGLE_YELLOW,
     ReProd26B,
 )
-from fits import (
+from jrafhead.fits import (
     ExponentialRateFitter,
     FitResult,
 )
-from loader import (
+from jrafhead.loader import (
     load_lifetime_daq,
+    load_muon_length,
+    load_muon_multiplicity,
     load_muon_performance,
     load_muon_rate,
 )
-from plotters import (
+from jrafhead.plotters import (
+    MuonLengthPlotter,
+    MuonMultiplicityPlotter,
     MuonPerformanceAngle,
     MuonPerformanceDistance,
     MuonPerformanceMetricClippingness,
     RunEvolutionPlotter,
     TimeEvolutionPlotter,
 )
-from utils import (
+from jrafhead.utils import (
+    rebin_histogram,
     save_figure,
+    uniform_bins,
 )
 
 from .base import BaseAnalysis
@@ -77,12 +86,16 @@ class MuonPerformanceAnalysis(BaseAnalysis):
         self._plot_distance_vs_clippingness()
         self._plot_angle_vs_run()
         self._plot_distance_vs_run()
+        self._plot_chi2_vs_run()
         self._plot_angle_vs_time()
         self._plot_distance_vs_time()
+        self._plot_chi2_vs_time()
         self._plot_angle_vs_run_subset()
         self._plot_distance_vs_run_subset()
+        self._plot_chi2_vs_run_subset()
         self._plot_angle_vs_time_subset()
         self._plot_distance_vs_time_subset()
+        self._plot_chi2_vs_time_subset()
         plt.show()
 
     # ---------------------------------------------------------------------------------------------
@@ -214,15 +227,15 @@ class MuonPerformanceAnalysis(BaseAnalysis):
                 for run in runs
             ])
 
-            mean_angle  = np.mean(perc68)
-            std_angle   = np.std(perc68)
+            mean_distance  = np.mean(perc68)
+            std_distance   = np.std(perc68)
 
             plotter.add(
                 runs, 
                 perc68, 
                 np.zeros_like(perc68), 
                 phase.color,
-                f"{phase.name}: ${mean_angle:.2f} \pm {std_angle:.2f}" r"^{\circ}$",
+                f"{phase.name}: ${mean_distance:.2f} \pm {std_distance:.2f}" r"$~m",
             )
 
             plotter.add_region(
@@ -236,6 +249,63 @@ class MuonPerformanceAnalysis(BaseAnalysis):
         fig, _ = plotter.plot()
 
         save_figure(fig, self.stem, "_distance_vs_run", output_dir=self.output_dir)
+        plt.close(fig)
+
+    def _plot_chi2_vs_run(self) -> None:
+        plotter = RunEvolutionPlotter(
+            r"$\bar{\chi}^{2}_{\mathrm{CD}+\mathrm{WP}}$", 
+            xlim=(ReProd26B.phases[0].run_min - 100, ReProd26B.phases[3].run_max + 100),
+            ylim=(0.0, 10.0),
+            show_mean=False, 
+            show_band=False,
+            legend_ncol=2,
+        )
+        
+        for phase in ReProd26B.phases:
+            mask = np.logical_and(
+                phase.run_min <= self._data.run_id,
+                self._data.run_id <= phase.run_max,
+            )
+            if bool(np.all(np.logical_not(mask))):
+                continue
+        
+            runs = np.unique(self._data.run_id[mask])
+            mean = np.array([
+                np.mean(
+                    self._data.target_quality[self._data.run_id == run]
+                )
+                for run in runs
+            ])
+            std = np.array([
+                np.std(
+                    self._data.target_quality[self._data.run_id == run]
+                )
+                for run in runs
+            ])
+        
+            mean_chi2 = np.mean(mean)
+            std_chi2  = np.std(mean)
+            stat_chi2 = np.sqrt(np.sum(std**2)) / len(mean)
+        
+            plotter.add(
+                runs, 
+                mean, 
+                np.zeros_like(mean), 
+                phase.color,
+                f"{phase.name}: ${mean_chi2:.2f} \pm {std_chi2:.2f}" r"$",
+            )
+        
+            plotter.add_region(
+                phase.run_min,
+                phase.run_max,
+                phase.color,
+                phase.name,
+                50, 0.05, 20, 0.0
+            )
+        
+        fig, _ = plotter.plot()
+        
+        save_figure(fig, self.stem, "_chi2_vs_run", output_dir=self.output_dir)
         plt.close(fig)
 
     def _plot_angle_vs_time(self) -> None:
@@ -354,11 +424,75 @@ class MuonPerformanceAnalysis(BaseAnalysis):
         save_figure(fig, self.stem, "_distance_vs_time", output_dir=self.output_dir)
         plt.close(fig)
 
+    def _plot_chi2_vs_time(self) -> None:
+        plotter = TimeEvolutionPlotter(
+            r"$\bar{\chi}^{2}_{\mathrm{CD}+\mathrm{WP}}$",
+            xlim=(
+                datetime.fromisoformat(ReProd26B.phases[0].date_min) - timedelta(days=2),
+                datetime.fromisoformat(ReProd26B.phases[3].date_max) + timedelta(days=2),
+            ),
+            ylim=(0.0, 10.0),
+            show_mean=False,
+            show_band=False,
+            legend_ncol=2,
+        )
+
+        for phase in ReProd26B.phases:
+            mask = np.logical_and(
+                phase.run_min <= self._data.run_id,
+                self._data.run_id <= phase.run_max,
+            )
+            if bool(np.all(np.logical_not(mask))):
+                continue
+
+            runs = np.unique(self._data.run_id[mask])
+            mean = np.array([
+                np.mean(
+                    self._data.target_quality[self._data.run_id == run]
+                )
+                for run in runs
+            ])
+            std = np.array([
+                np.std(
+                    self._data.target_quality[self._data.run_id == run]
+                )
+                for run in runs
+            ])
+
+            start_sec = np.array([
+                self._data_daq.start_sec[self._data_daq.run_id == run][0]
+                for run in runs
+            ])
+        
+            mean_chi2 = np.mean(mean)
+            std_chi2  = np.std(mean)
+            stat_chi2 = np.sqrt(np.sum(std**2)) / len(mean)
+
+            plotter.add(
+                start_sec,
+                mean,
+                np.zeros_like(mean),
+                phase.color,
+                f"{phase.name}: ${mean_chi2:.2f} \pm {std_chi2:.2f}" r"$",
+            )
+
+            plotter.add_region(
+                mdates.date2num(datetime.fromisoformat(phase.date_min)),
+                mdates.date2num(datetime.fromisoformat(phase.date_max)),
+                phase.color,
+                phase.name,
+                2, 0.05, 20, 0.0
+            )
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_chi2_vs_time", output_dir=self.output_dir)
+        plt.close(fig)
+
     def _plot_angle_vs_run_subset(self) -> None:
         plotter = RunEvolutionPlotter(
             r"$68^{\mathrm{th}}$ percentile of $\alpha$ (deg)", 
             xlim=(10550, 11000),
-            ylim=(0.0, 5.0),
+            ylim=(0.0, 3.0),
             show_mean=True, 
             show_band=True,
             legend_ncol=1,
@@ -403,7 +537,7 @@ class MuonPerformanceAnalysis(BaseAnalysis):
         plotter = RunEvolutionPlotter(
             r"$68^{\mathrm{th}}$ percentile of $d_{\mathrm{mid}}$ (m)", 
             xlim=(10550, 11000),
-            ylim=(0.0, 2.0),
+            ylim=(0.0, 1.0),
             show_mean=True, 
             show_band=True,
             legend_ncol=1,
@@ -445,6 +579,58 @@ class MuonPerformanceAnalysis(BaseAnalysis):
         save_figure(fig, self.stem, "_subset_distance_vs_run", output_dir=self.output_dir)
         plt.close(fig)
 
+    def _plot_chi2_vs_run_subset(self) -> None:
+        plotter = RunEvolutionPlotter(
+            r"$\bar{\chi}^{2}_{\mathrm{CD}+\mathrm{WP}}$", 
+            xlim=(10550, 11000),
+            ylim=(0.0, 4.0),
+            show_mean=True, 
+            show_band=True,
+            legend_ncol=1,
+            legend_bbox=(0.85, 0.95),
+        )
+        
+        for phase in ReProd26B.phases:
+            if phase.name != "Phase 1":
+                continue
+            mask = np.logical_and(
+                10550 <= self._data.run_id,
+                self._data.run_id <= 11000,
+            )
+            if bool(np.all(np.logical_not(mask))):
+                continue
+        
+            runs = np.unique(self._data.run_id[mask])
+            mean = np.array([
+                np.mean(
+                    self._data.target_quality[self._data.run_id == run]
+                )
+                for run in runs
+            ])
+            std = np.array([
+                np.std(
+                    self._data.target_quality[self._data.run_id == run]
+                )
+                for run in runs
+            ])
+        
+            mean_chi2 = np.mean(mean)
+            std_chi2  = np.std(mean)
+            stat_chi2 = np.sqrt(np.sum(std**2)) / len(mean)
+        
+            plotter.add(
+                runs, 
+                mean, 
+                np.zeros_like(mean), 
+                CUSTOM_GREEN,
+                r"$\bar{\chi}^{2}_{\mathrm{CD}+\mathrm{WP}} = " f"{mean_chi2:.1f}" r" \pm " f"{std_chi2:.1f}" r"$",
+            )
+        
+        fig, _ = plotter.plot()
+        
+        save_figure(fig, self.stem, "_subset_chi2_vs_run", output_dir=self.output_dir)
+        plt.close(fig)
+
     def _plot_angle_vs_time_subset(self) -> None:
         plotter = TimeEvolutionPlotter(
             r"$68^{\mathrm{th}}$ percentile of $\alpha$ (deg)",
@@ -452,7 +638,7 @@ class MuonPerformanceAnalysis(BaseAnalysis):
                 datetime.fromisoformat("2025-10-08"),
                 datetime.fromisoformat("2025-10-31"),
             ),
-            ylim=(0.0, 5.0),
+            ylim=(0.0, 3.0),
             show_mean=True,
             show_band=True,
             legend_ncol=1,
@@ -506,7 +692,7 @@ class MuonPerformanceAnalysis(BaseAnalysis):
                 datetime.fromisoformat("2025-10-08"),
                 datetime.fromisoformat("2025-10-31"),
             ),
-            ylim=(0.0, 2.0),
+            ylim=(0.0, 1.0),
             show_mean=True,
             show_band=True,
             legend_ncol=1,
@@ -551,6 +737,66 @@ class MuonPerformanceAnalysis(BaseAnalysis):
 
         fig, _ = plotter.plot()
         save_figure(fig, self.stem, "_subset_distance_vs_time", output_dir=self.output_dir)
+        plt.close(fig)
+
+    def _plot_chi2_vs_time_subset(self) -> None:
+        plotter = TimeEvolutionPlotter(
+            r"$\bar{\chi}^{2}_{\mathrm{CD}+\mathrm{WP}}$",
+            xlim=(
+                datetime.fromisoformat("2025-10-08"),
+                datetime.fromisoformat("2025-10-31"),
+            ),
+            ylim=(0.0, 4.0),
+            show_mean=True,
+            show_band=True,
+            legend_ncol=1,
+            legend_bbox=(0.85, 0.95),
+            fuze_by_date=False,
+        )
+
+        for phase in ReProd26B.phases:
+            if phase.name != "Phase 1":
+                continue
+            mask = np.logical_and(
+                10550 <= self._data.run_id,
+                self._data.run_id <= 11000,
+            )
+            if bool(np.all(np.logical_not(mask))):
+                continue
+
+            runs = np.unique(self._data.run_id[mask])
+            mean = np.array([
+                np.mean(
+                    self._data.target_quality[self._data.run_id == run]
+                )
+                for run in runs
+            ])
+            std = np.array([
+                np.std(
+                    self._data.target_quality[self._data.run_id == run]
+                )
+                for run in runs
+            ])
+
+            start_sec = np.array([
+                self._data_daq.start_sec[self._data_daq.run_id == run][0]
+                for run in runs
+            ])
+        
+            mean_chi2 = np.mean(mean)
+            std_chi2  = np.std(mean)
+            stat_chi2 = np.sqrt(np.sum(std**2)) / len(mean)
+
+            plotter.add(
+                start_sec,
+                mean,
+                np.zeros_like(mean),
+                CUSTOM_GREEN,
+                r"$\bar{\chi}^{2}_{\mathrm{CD}+\mathrm{WP}} = " f"{mean_chi2:.1f}" r" \pm " f"{std_chi2:.1f}" r"$",
+            )
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_subset_chi2_vs_time", output_dir=self.output_dir)
         plt.close(fig)
 
 # -------------------------------------------------------------------------------------------------
@@ -655,21 +901,19 @@ class MuonRateAnalysis(BaseAnalysis):
         
         self._fit_cd_wp: list[FitResult] = []
         for h in self._data.hist_cd_wp:
-            centers = (h.edges[1:] + h.edges[:-1]) / 2.0
             hist    = h.counts
             err     = h.errors
 
-            fitter = ExponentialRateFitter(centers, hist, err)
+            fitter = ExponentialRateFitter(h.edges, hist, err)
             results = fitter.fit() # results can be None
             self._fit_cd_wp.append(results)
 
         self._fit_wp_only: list[FitResult] = []
         for h in self._data.hist_wp_only:
-            centers = (h.edges[1:] + h.edges[:-1]) / 2.0
             hist    = h.counts
             err     = h.errors
 
-            fitter = ExponentialRateFitter(centers, hist, err, xlim=(0.1, None))
+            fitter = ExponentialRateFitter(h.edges, hist, err, xlim=(0.1, None))
             results = fitter.fit()
             self._fit_wp_only.append(results)
 
@@ -704,6 +948,7 @@ class MuonRateAnalysis(BaseAnalysis):
             ylim=(0.0, 10.0),
             show_mean=True, 
             show_band=True,
+            show_grid=False,
             legend_ncol=2,
         )
 
@@ -711,7 +956,9 @@ class MuonRateAnalysis(BaseAnalysis):
         rate_wp_only    = np.array([fit.popt[1] if fit is not None else 0.0 for fit in self._fit_wp_only])
         err_wp_only     = np.array([fit.perr[1] if fit is not None else 0.0 for fit in self._fit_wp_only])
         mean_wp_only    = np.mean(rate_wp_only)
-        std_wp_only     = np.sqrt(np.mean(err_wp_only**2))
+        stat_wp_only    = np.sqrt(np.sum(err_wp_only**2)) / len(rate_wp_only)
+        spread_wp_only  = np.std(rate_wp_only, ddof=1)
+        std_wp_only     = np.sqrt(stat_wp_only**2 + spread_wp_only**2)
 
         plotter.add(
             self._data.run_id[valid_wp_only],
@@ -725,7 +972,9 @@ class MuonRateAnalysis(BaseAnalysis):
         rate_cd_wp    = np.array([fit.popt[1] if fit is not None else 0.0 for fit in self._fit_cd_wp])
         err_cd_wp     = np.array([fit.perr[1] if fit is not None else 0.0 for fit in self._fit_cd_wp])
         mean_cd_wp    = np.mean(rate_cd_wp)
-        std_cd_wp     = np.sqrt(np.mean(err_cd_wp**2))
+        stat_cd_wp    = np.sqrt(np.sum(err_cd_wp**2)) / len(rate_cd_wp)
+        spread_cd_wp  = np.std(rate_cd_wp, ddof=1)
+        std_cd_wp     = np.sqrt(stat_cd_wp**2 + spread_cd_wp**2)
 
         plotter.add(
             self._data.run_id[valid_cd_wp],
@@ -739,7 +988,9 @@ class MuonRateAnalysis(BaseAnalysis):
         rate_cd_only    = np.array([fit.popt[1] if fit is not None else 0.0 for fit in self._fit_cd_only])
         err_cd_only     = np.array([fit.perr[1] if fit is not None else 0.0 for fit in self._fit_cd_only])
         mean_cd_only    = np.mean(rate_cd_only)
-        std_cd_only     = np.sqrt(np.mean(err_cd_only**2))
+        stat_cd_only    = np.sqrt(np.sum(err_cd_only**2)) / len(rate_cd_only)
+        spread_cd_only  = np.std(rate_cd_only, ddof=1)
+        std_cd_only     = np.sqrt(stat_cd_only**2 + spread_cd_only**2)
 
         exp = int(np.floor(np.log10(mean_cd_only)))
         mantissa_mean = mean_cd_only / 10**exp
@@ -753,11 +1004,13 @@ class MuonRateAnalysis(BaseAnalysis):
             rf"CD only rate: $({mantissa_mean:.2f} \pm {mantissa_std:.2f}) \times 10^{{{exp}}}$~cps",
         )
 
-        valid_total = valid_wp_only & valid_cd_wp & valid_cd_only
-        rate_total  = rate_wp_only + rate_cd_wp + rate_cd_only
-        err_total   = np.sqrt(err_cd_wp**2 + err_cd_only**2 + err_wp_only**2)
-        mean_total  = np.mean(rate_total)
-        std_total   = np.sqrt(np.mean(err_total**2))
+        valid_total  = valid_wp_only & valid_cd_wp & valid_cd_only
+        rate_total   = rate_wp_only + rate_cd_wp + rate_cd_only
+        err_total    = np.sqrt(err_cd_wp**2 + err_cd_only**2 + err_wp_only**2)
+        mean_total   = np.mean(rate_total)
+        stat_total   = np.sqrt(np.sum(err_total**2)) / len(rate_total)
+        spread_total = np.std(rate_total, ddof=1)
+        std_total    = np.sqrt(stat_total**2 + spread_total**2)
 
         plotter.add(
             self._data.run_id[valid_total],
@@ -786,6 +1039,7 @@ class MuonRateAnalysis(BaseAnalysis):
             ylim=(0.0, 10.0),
             show_mean=True, 
             show_band=True,
+            show_grid=False,
             legend_ncol=2,
         )
 
@@ -796,7 +1050,9 @@ class MuonRateAnalysis(BaseAnalysis):
         rate_wp_only    = np.array([fit.popt[1] if fit is not None else 0.0 for fit in self._fit_wp_only])
         err_wp_only     = np.array([fit.perr[1] if fit is not None else 0.0 for fit in self._fit_wp_only])
         mean_wp_only    = np.mean(rate_wp_only)
-        std_wp_only     = np.sqrt(np.mean(err_wp_only**2))
+        stat_wp_only    = np.sqrt(np.sum(err_wp_only**2)) / len(rate_wp_only)
+        spread_wp_only  = np.std(rate_wp_only, ddof=1)
+        std_wp_only     = np.sqrt(stat_wp_only**2 + spread_wp_only**2)
 
         plotter.add(
             self._data_daq.start_sec[mask][valid_wp_only],
@@ -810,7 +1066,9 @@ class MuonRateAnalysis(BaseAnalysis):
         rate_cd_wp    = np.array([fit.popt[1] if fit is not None else 0.0 for fit in self._fit_cd_wp])
         err_cd_wp     = np.array([fit.perr[1] if fit is not None else 0.0 for fit in self._fit_cd_wp])
         mean_cd_wp    = np.mean(rate_cd_wp)
-        std_cd_wp     = np.sqrt(np.mean(err_cd_wp**2))
+        stat_cd_wp    = np.sqrt(np.sum(err_cd_wp**2)) / len(rate_cd_wp)
+        spread_cd_wp  = np.std(rate_cd_wp, ddof=1)
+        std_cd_wp     = np.sqrt(stat_cd_wp**2 + spread_cd_wp**2)
 
         plotter.add(
             self._data_daq.start_sec[mask][valid_cd_wp],
@@ -824,7 +1082,9 @@ class MuonRateAnalysis(BaseAnalysis):
         rate_cd_only    = np.array([fit.popt[1] if fit is not None else 0.0 for fit in self._fit_cd_only])
         err_cd_only     = np.array([fit.perr[1] if fit is not None else 0.0 for fit in self._fit_cd_only])
         mean_cd_only    = np.mean(rate_cd_only)
-        std_cd_only     = np.sqrt(np.mean(err_cd_only**2))
+        stat_cd_only    = np.sqrt(np.sum(err_cd_only**2)) / len(rate_cd_only)
+        spread_cd_only  = np.std(rate_cd_only, ddof=1)
+        std_cd_only     = np.sqrt(stat_cd_only**2 + spread_cd_only**2)
 
         exp = int(np.floor(np.log10(mean_cd_only)))
         mantissa_mean = mean_cd_only / 10**exp
@@ -838,11 +1098,13 @@ class MuonRateAnalysis(BaseAnalysis):
             rf"CD only rate: $({mantissa_mean:.2f} \pm {mantissa_std:.2f}) \times 10^{{{exp}}}$~cps",
         )
 
-        valid_total = valid_wp_only & valid_cd_wp & valid_cd_only
-        rate_total  = rate_wp_only + rate_cd_wp + rate_cd_only
-        err_total   = np.sqrt(err_cd_wp**2 + err_cd_only**2 + err_wp_only**2)
-        mean_total  = np.mean(rate_total)
-        std_total   = np.sqrt(np.mean(err_total**2))
+        valid_total  = valid_wp_only & valid_cd_wp & valid_cd_only
+        rate_total   = rate_wp_only + rate_cd_wp + rate_cd_only
+        err_total    = np.sqrt(err_cd_wp**2 + err_cd_only**2 + err_wp_only**2)
+        mean_total   = np.mean(rate_total)
+        stat_total   = np.sqrt(np.sum(err_total**2)) / len(rate_total)
+        spread_total = np.std(rate_total, ddof=1)
+        std_total    = np.sqrt(stat_total**2 + spread_total**2)
 
         plotter.add(
             self._data_daq.start_sec[mask][valid_total],
@@ -871,6 +1133,7 @@ class MuonRateAnalysis(BaseAnalysis):
             ylim=(0.90, 1.0),
             show_mean=True, 
             show_band=True,
+            show_grid=False,
             legend_ncol=2,
         )
 
@@ -927,6 +1190,7 @@ class MuonRateAnalysis(BaseAnalysis):
             ylim=(0.9, 1.0),
             show_mean=True, 
             show_band=True,
+            show_grid=False,
             legend_ncol=2,
         )
 
@@ -983,4 +1247,292 @@ class MuonRateAnalysis(BaseAnalysis):
 
         fig, _ = plotter.plot()
         save_figure(fig, self.stem, "_efficiency_per_time", output_dir=self.output_dir)
+        plt.close(fig)
+
+# -------------------------------------------------------------------------------------------------
+# Muon length analysis
+# -------------------------------------------------------------------------------------------------
+
+class MuonLengthAnalysis(BaseAnalysis):
+    """
+    Muon length analysis.
+
+    Parameters
+    ----------
+    filepath : str or Path
+        Path to the ROOT input file.
+    dirpath : str or Path
+        Path to the directory inside the ROOT file.
+    dirpath_daq : str or Path
+        Path to the DAQ directory inside the ROOT file.
+    output_dir : str or Path
+        Root directory for saved figures.
+    """
+
+    def __init__(
+            self,
+            filepath: str,
+            dirpath: str,
+            dirpath_daq: str,
+            output_dir:str = ".",
+    ) -> None:
+        super().__init__(filepath, dirpath, output_dir)
+        self.dirpath_daq    = dirpath_daq
+
+    def _load(self) -> None:
+        self._data      = load_muon_length(str(self.filepath), str(self.dirpath))
+        self._data_daq  = load_lifetime_daq(str(self.filepath), str(self.dirpath_daq))
+
+    # ---------------------------------------------------------------------------------------------
+    # Individual plot methods - one per output figure
+    # ---------------------------------------------------------------------------------------------
+
+    def _plot(self) -> None:
+        self._print_total_length()
+        self._plot_accumulated_length()
+        self._plot_length_per_run()
+        self._plot_length_per_time()
+        plt.show()
+
+    def _print_total_length(self) -> None:
+        print(f"Total muon length: {np.sum(self._data.total_length)}")
+        print(f"Total number of muon: {np.sum(self._data.total_muon)}")
+        print(f"Mean muon length: {np.sum(np.sum(self._data.total_length)) / np.sum(self._data.total_muon)}")
+
+    def _plot_accumulated_length(self) -> None:
+        bins    = uniform_bins(0.0, 40.0, 100)
+        plotter = MuonLengthPlotter(bins=bins)
+
+        mask = np.logical_and(
+            10000 <= self._data.run_id,
+            self._data.run_id <= 10100
+        )
+        hist = np.sum([h.counts for h, m in zip(self._data.hist_length, mask) if m], axis=0)
+        hist = rebin_histogram(self._data.hist_length[0].edges, hist, bins)
+        err  = np.sqrt(hist)
+        # err  = np.sqrt(np.sum([h.errors ** 2 for h, m in zip(self._data.hist_length, mask) if m], axis=0))
+
+        plotter.add_histogram(
+            hist, err,
+            BLACK, fillcolor=BLACK,
+        )
+        # cmap   = plt.get_cmap("YlGnBu")
+        # colors = [mcolors.to_hex(cmap(i / 20.0)) for i in range(20)]
+        # for k in range(10):
+        #     plotter.add_histogram(
+        #         self._data.hist_length[k].counts, self._data.hist_length[k].errors,
+        #         colors[k], label=k,
+        #         )
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_accumulate", output_dir=self.output_dir)
+        plt.close(fig)
+
+    def _plot_length_per_run(self) -> None:
+        plotter = RunEvolutionPlotter(
+            r"$L_{\mu}$ (m)",
+            ylim=(0.0, 30.0),
+            show_mean=True, 
+            show_band=True,
+            show_grid=False,
+            legend_ncol=1,
+        )
+
+        length = self._data.total_length / self._data.total_muon
+        mean   = np.mean(self._data.total_length / self._data.total_muon)
+        err    = np.std(self._data.total_length / self._data.total_muon, ddof=1)
+
+        plotter.add(
+            self._data.run_id,
+            length,
+            np.zeros_like(length),
+            BLACK,
+            rf"Muon length: ${mean:.3f} \pm {err:.3f}$~m",
+        )
+
+        for phase in ReProd26B.phases:
+            plotter.add_region(
+                phase.run_min,
+                phase.run_max,
+                phase.color,
+                phase.name,
+                50, 0.1, 20, 0.0
+            )
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_per_run", output_dir=self.output_dir)
+        plt.close(fig)
+
+    def _plot_length_per_time(self) -> None:
+        plotter = TimeEvolutionPlotter(
+            r"$L_{\mu}$ (m)",
+            ylim=(0.0, 30.0),
+            show_mean=True, 
+            show_band=True,
+            show_grid=False,
+            legend_ncol=2,
+        )
+
+        run_ids = np.unique(self._data.run_id)
+        mask = np.isin(self._data_daq.run_id, run_ids)
+
+        length = self._data.total_length / self._data.total_muon
+        mean   = np.mean(self._data.total_length / self._data.total_muon)
+        err    = np.std(self._data.total_length / self._data.total_muon, ddof=1)
+
+        plotter.add(
+            self._data_daq.start_sec[mask],
+            length,
+            np.zeros_like(length),
+            BLACK,
+            rf"Muon length: ${mean:.3f} \pm {err:.3f}$~m",
+        )
+
+        for phase in ReProd26B.phases:
+            plotter.add_region(
+                mdates.date2num(datetime.fromisoformat(phase.date_min)),
+                mdates.date2num(datetime.fromisoformat(phase.date_max)),
+                phase.color,
+                phase.name,
+                2, 0.1, 20, 0.0
+            )
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_per_time", output_dir=self.output_dir)
+        plt.close(fig)
+
+# -------------------------------------------------------------------------------------------------
+# Muon multiplicity analysis
+# -------------------------------------------------------------------------------------------------
+
+class MuonMultiplicityAnalysis(BaseAnalysis):
+    """
+    Muon multiplicity analysis.
+
+    Parameters
+    ----------
+    filepath : str or Path
+        Path to the ROOT input file.
+    dirpath : str or Path
+        Path to the directory inside the ROOT file.
+    dirpath_daq : str or Path
+        Path to the DAQ directory inside the ROOT file.
+    output_dir : str or Path
+        Root directory for saved figures.
+    """
+
+    def __init__(
+            self,
+            filepath: str,
+            dirpath: str,
+            dirpath_daq: str,
+            output_dir:str = ".",
+    ) -> None:
+        super().__init__(filepath, dirpath, output_dir)
+        self.dirpath_daq    = dirpath_daq
+
+    def _load(self) -> None:
+        self._data      = load_muon_multiplicity(str(self.filepath), str(self.dirpath))
+        self._data_daq  = load_lifetime_daq(str(self.filepath), str(self.dirpath_daq))
+
+    # ---------------------------------------------------------------------------------------------
+    # Individual plot methods - one per output figure
+    # ---------------------------------------------------------------------------------------------
+
+    def _plot(self) -> None:
+        self._print_total_multiplicity()
+        self._plot_accumulated_multiplicity()
+        self._plot_multiplicity_per_run()
+        self._plot_multiplicity_per_time()
+        plt.show()
+
+    def _print_total_multiplicity(self) -> None:
+        hist = np.sum([h.counts for h in self._data.hist_multipliticy], axis=0)
+        print(f"Average muon multiplicity: {np.sum(hist * self._data.hist_multipliticy[0].edges[:-1]) / np.sum(hist)}")
+
+    def _plot_accumulated_multiplicity(self) -> None:
+        plotter = MuonMultiplicityPlotter()
+
+        hist = np.sum([h.counts for h in self._data.hist_multipliticy], axis=0)
+        err  = np.sqrt(np.sum([h.errors ** 2 for h in self._data.hist_multipliticy], axis=0))
+
+        plotter.add_histogram(
+            hist, err,
+            BLACK, fillcolor=BLACK,
+        )
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_accumulate", output_dir=self.output_dir)
+        plt.close(fig)
+
+    def _plot_multiplicity_per_run(self) -> None:
+        plotter = RunEvolutionPlotter(
+            r"$n_{\mathrm{track}}$",
+            ylim=(0.0, 2.0),
+            show_mean=True, 
+            show_band=True,
+            show_grid=False,
+            legend_ncol=1,
+        )
+
+        multiplicity = np.array([np.sum(h.counts * h.edges[:-1]) / np.sum(h.counts) for h in self._data.hist_multipliticy])
+        mean         = np.mean(multiplicity)
+        err          = np.std(multiplicity, ddof=1)
+
+        plotter.add(
+            self._data.run_id,
+            multiplicity,
+            np.zeros_like(multiplicity),
+            BLACK,
+            rf"Muon multiplicity: ${mean:.3f} \pm {err:.3f}$",
+        )
+
+        for phase in ReProd26B.phases:
+            plotter.add_region(
+                phase.run_min,
+                phase.run_max,
+                phase.color,
+                phase.name,
+                50, 0.1, 20, 0.0
+            )
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_per_run", output_dir=self.output_dir)
+        plt.close(fig)
+
+    def _plot_multiplicity_per_time(self) -> None:
+        plotter = TimeEvolutionPlotter(
+            r"$n_{\mathrm{track}}$",
+            ylim=(0.0, 2.0),
+            show_mean=True, 
+            show_band=True,
+            show_grid=False,
+            legend_ncol=2,
+        )
+
+        run_ids = np.unique(self._data.run_id)
+        mask = np.isin(self._data_daq.run_id, run_ids)
+
+        multiplicity = np.array([np.sum(h.counts * h.edges[:-1]) / np.sum(h.counts) for h in self._data.hist_multipliticy])
+        mean         = np.mean(multiplicity)
+        err          = np.std(multiplicity, ddof=1)
+
+        plotter.add(
+            self._data_daq.start_sec[mask],
+            multiplicity,
+            np.zeros_like(multiplicity),
+            BLACK,
+            rf"Muon multiplicity: ${mean:.3f} \pm {err:.3f}$",
+        )
+
+        for phase in ReProd26B.phases:
+            plotter.add_region(
+                mdates.date2num(datetime.fromisoformat(phase.date_min)),
+                mdates.date2num(datetime.fromisoformat(phase.date_max)),
+                phase.color,
+                phase.name,
+                2, 0.1, 20, 0.0
+            )
+
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_per_time", output_dir=self.output_dir)
         plt.close(fig)

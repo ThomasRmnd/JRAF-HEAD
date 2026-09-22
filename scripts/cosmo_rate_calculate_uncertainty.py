@@ -6,24 +6,28 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--input", nargs=2, type=float, default=(12608.3, 238.3), help="Input total number of comosgenic with its uncertainty")
 args = parser.parse_args()
 
-neutron_accompanying_effiency      = 0.9572125786132055
-neutron_accompanying_effiency_stat = 0.005804800228724907
-neutron_accompanying_effiency_syst = 0.015271661539917995
+# 0.9592225549614767 +/- 0.006068434955699611 stat +/- 0.013600886811613979 syst  |  neutron without flasher cut, without helium, with multipliticy
+# 0.9301847594467259 +/- 0.005580037072882779 stat +/- 0.01456172201634703  syst  |  neutron with flasher cut,    with helium,    with multiplicity
+# 0.9300745298317897 +/- 0.005495252568151527 stat +/- 0.014854065891313968 syst  |  neutron with flasher cut,    with helium,    without multiplicity
+
+neutron_accompanying_effiency      = 0.9300745298317897
+neutron_accompanying_effiency_stat = 0.005495252568151527
+neutron_accompanying_effiency_syst = 0.014854065891313968
 
 selection_table_efficiency = {
-    "fiducial_volume":          89.62 / 100.0,
-    "prompt_energy":            100.0 / 100.0,
-    "delayed_energy":           99.90 / 100.0,
+    "fiducial_volume":          91.40 / 100.0,
+    "prompt_energy":            99.55 / 100.0,
+    "delayed_energy":           99.94 / 100.0,
     "prompt_delayed_distance":  99.16 / 100.0,
-    "prompt_delayed_time":      96.95 / 100.0,
-    "multiplicity":             97.60 / 100.0,
+    "prompt_delayed_time":      96.63 / 100.0,
+#     "multiplicity":             97.50 / 100.0,
 }
 
 selection_table_relerr = {
-    "fiducial_volume":          1.80 / 100.0,
-    "delayed_energy":           0.28 / 100.0,
-    "prompt_delayed_distance":  0.30 / 100.0,
-    "prompt_delayed_time":      0.05 / 100.0,
+    "fiducial_volume":          1.90 / 100.0,
+    "delayed_energy":           0.10 / 100.0,
+    "prompt_delayed_distance":  0.20 / 100.0,
+    "prompt_delayed_time":      0.03 / 100.0,
 }
 
 selection_efficiency = np.prod(list(selection_table_efficiency.values()))

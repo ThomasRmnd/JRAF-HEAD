@@ -15,12 +15,12 @@ def model_time_bkg(x: np.ndarray, N: float, fbkg: float, tmin: float, tmax: floa
 
 def model_time_9li(x: np.ndarray, N: float, fbkg: float, f9li: float, t9li: float, tmin: float, tmax: float) -> np.ndarray:
     norm = np.exp(-tmin / t9li) - np.exp(-tmax / t9li)
-    pdf = np.exp(-x / t9li) / t9li / norm
+    pdf  = np.exp(-x / t9li) / t9li / norm
     return N * (1.0 - fbkg) * f9li * pdf
 
 def model_time_8he(x: np.ndarray, N: float, fbkg: float, f9li: float, t8he: float, tmin: float, tmax: float) -> np.ndarray:
     norm = np.exp(-tmin / t8he) - np.exp(-tmax / t8he)
-    pdf = np.exp(-x / t8he) / t8he / norm
+    pdf  = np.exp(-x / t8he) / t8he / norm
     return N * (1.0 - fbkg) * (1.0 - f9li) * pdf
 
 # ---------------------------------------------------------------------------
@@ -50,7 +50,7 @@ class Li9He8ContrainedFractionFitter(BaseFitter):
     f9li        = 0.80      - Proportion of Lithium 9
     """
 
-    n_params: int = 3 # N, fbkg, f9li
+    n_params: int = 2 # N, fbkg, f9li
 
     def __init__(
         self, 
@@ -112,6 +112,12 @@ class Li9He8ContrainedFractionFitter(BaseFitter):
             np.asarray(dtyerr)[dtvalid]
         ))
 
+        self.eN         = np.sum(ey[evalid] * self.ewidths)
+        self.dtN        = np.sum(dty[dtvalid] * self.dtwidths)
+        self.tmin       = self.dtcenters[0]  - 0.5 * self.dtwidths[0]
+        self.tmax       = self.dtcenters[-1] + 0.5 * self.dtwidths[-1]
+        print(self.eN, self.dtN)
+
     def _to_energy(self, x: np.ndarray) -> np.ndarray:
         return x[:self.nenergy]
     
@@ -139,25 +145,29 @@ class Li9He8ContrainedFractionFitter(BaseFitter):
     def model_time(self, x: np.ndarray, N: float, fbkg: float, f9li: float) -> np.ndarray:
         t9li = 0.256
         t8he = 0.171
-        tmin = self.dtcenters[0] - self.dtwidths[0]
-        tmax = self.dtcenters[-1] + self.dtwidths[-1]
         return (
-            model_time_bkg(x, N, fbkg, tmin, tmax) + 
-            model_time_9li(x, N, fbkg, f9li, t9li, tmin, tmax) +
-            model_time_8he(x, N, fbkg, f9li, t8he, tmin, tmax)
+            model_time_bkg(x, N, fbkg, self.tmin, self.tmax) + 
+            model_time_9li(x, N, fbkg, f9li, t9li, self.tmin, self.tmax) +
+            model_time_8he(x, N, fbkg, f9li, t8he, self.tmin, self.tmax)
         )
     
-    def model(self, x: np.ndarray, N: float, fbkg: float, f9li: float) -> np.ndarray:
+    # def model(self, x: np.ndarray, N: float, fbkg: float, f9li: float) -> np.ndarray:
+    #     return np.concatenate((
+    #         self.model_energy(self._to_energy(x), N, fbkg, f9li),
+    #         self.model_time(self._to_time(x), N, fbkg, f9li),
+    #     ))
+
+    def model(self, x: np.ndarray, fbkg: float, f9li: float) -> np.ndarray:
         return np.concatenate((
-            self.model_energy(self._to_energy(x), N, fbkg, f9li),
-            self.model_time(self._to_time(x), N, fbkg, f9li),
+            self.model_energy(self._to_energy(x), self.eN, fbkg, f9li),
+            self.model_time(self._to_time(x), self.dtN, fbkg, f9li),
         ))
 
     def _initial_params(self) -> list[float]:
-        N = np.sum(self._to_energy(self.y) * self.ewidths)
+        # N = np.sum(self._to_energy(self.y) * self.ewidths)
         fbkg = 0.35
         f9li = 0.9
-        return [N, fbkg, f9li]
+        return [fbkg, f9li]
 
 
 class Li9He8FractionFitter(BaseFitter):

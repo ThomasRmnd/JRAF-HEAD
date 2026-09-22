@@ -10,6 +10,10 @@ from .geometry import (
     compute_rho2,
     compute_z,
 )
+from .histogram import (
+    Histogram,
+    load_histogram_from_tree,
+)
 from .io import (
     extract_window,
 )

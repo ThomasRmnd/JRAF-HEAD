@@ -76,7 +76,6 @@ class Histogram2DPlotter(BasePlotter):
         """
         Draw one dataset as a filled area or a stepped line + error bars.
         """
-        pass
 
     # ---------------------------------------------------------------------------------------------
     # Hooks - overridden by subclasses
@@ -86,7 +85,6 @@ class Histogram2DPlotter(BasePlotter):
         """
         Hook for subclass-specific fits. No-op in the base class.
         """
-        pass
 
 
 # -------------------------------------------------------------------------------------------------
@@ -367,7 +365,7 @@ class MuonVetoDistributionPlotter(Histogram2DPlotter):
         xedges:   np.ndarray,
     ) -> None:
         """A * exp(-t/\tau) + c fit to the signal-region time projection."""
-        from fits.functions import ExponentialConstantFitter
+        from jrafhead.fits import ExponentialConstantFitter
 
         y    = xproj
         yerr = np.sqrt(y)
@@ -381,19 +379,26 @@ class MuonVetoDistributionPlotter(Histogram2DPlotter):
         if result is None:
             return
 
-        x_smooth = np.linspace(t_min_fit, xedges[-1], 500)
-        y_smooth = fitter.model(x_smooth, *result.popt)
-        ax.plot(x_smooth, y_smooth, linestyle="--", linewidth=1.2, color=BLACK)
+        bins_smooth    = np.linspace(t_min_fit, xedges[-1], 501)
+        centers_smooth = 0.5 * (bins_smooth[1:] + bins_smooth[:-1])
+        fitter_smooth = ExponentialConstantFitter(
+            bins_smooth,
+            np.zeros_like(centers_smooth),
+            np.ones_like(centers_smooth),
+            xlim=(t_min_fit, None),
+        )
+        y_smooth = fitter_smooth._predict(*result.popt)
+        ax.plot(centers_smooth, y_smooth, linestyle="--", linewidth=1.2, color=BLACK)
 
         A, tau, c = result.popt
-        A_err, tau_err, c_err = result.perr
+        Aerr, tauerr, cerr = result.perr
 
         text = (
-            r"$P(\chi^2/\mathrm{ndf} = %.1f / %d) = %.3f$" "\n"
-            r"$A = %.1f \pm %.1f$" "\n"
-            r"$\tau = %.3f \pm %.3f~\mathrm{s}$" "\n"
-            r"$c = %.1f \pm %.1f$"
-        ) % (result.chi2, result.ndf, result.pvalue, A, A_err, tau, tau_err, c, c_err)
+            rf"$P(\chi^2/\mathrm{{ndf}} = {result.chi2:.1f} / {result.ndf}) = {result.pvalue:.3f}$" "\n"
+            rf"$A = {A:.1f} \pm {Aerr:.1f}$" "\n"
+            rf"$\tau = {tau:.3f} \pm {tauerr:.3f}~\mathrm{{s}}$" "\n"
+            rf"$c = {c:.1f} \pm {cerr:.1f}$"
+        )
 
         ax.text(
             *self.fit_info_loc, text,
@@ -410,7 +415,7 @@ class MuonVetoDistributionPlotter(Histogram2DPlotter):
         xedges:   np.ndarray,
     ) -> None:
         """Constant fit to the background-region time projection."""
-        from fits.functions import ConstantFitter
+        from jrafhead.fits import ConstantFitter
 
         y    = xproj
         yerr = np.sqrt(y)
@@ -424,17 +429,24 @@ class MuonVetoDistributionPlotter(Histogram2DPlotter):
         if result is None:
             return
 
-        x_smooth = np.linspace(xedges[0], t_max_fit, 500)
-        y_smooth = fitter.model(x_smooth, *result.popt)
-        ax.plot(x_smooth, y_smooth, linestyle="--", linewidth=1.2, color=BLACK)
+        bins_smooth    = np.linspace(xedges[0], t_max_fit, 500)
+        centers_smooth = 0.5 * (bins_smooth[1:] + bins_smooth[:-1])
+        fitter_smooth = ConstantFitter(
+            bins_smooth,
+            np.zeros_like(centers_smooth),
+            np.zeros_like(centers_smooth),
+            xlim=(None, t_max_fit),
+        )
+        y_smooth = fitter_smooth._predict(*result.popt)
+        ax.plot(centers_smooth, y_smooth, linestyle="--", linewidth=1.2, color=BLACK)
 
-        c     = result.popt[0]
-        c_err = result.perr[0]
+        c    = result.popt[0]
+        cerr = result.perr[0]
 
         text = (
-            r"$P(\chi^2/\mathrm{ndf} = %.1f / %d) = %.3f$" "\n"
-            r"$c = %.1f \pm %.1f$"
-        ) % (result.chi2, result.ndf, result.pvalue, c, c_err)
+            rf"$P(\chi^2/\mathrm{{ndf}} = {result.chi2:.1f} / {result.ndf}) = {result.pvalue:.3f}$" "\n"
+            rf"$c = {c:.1f} \pm {cerr:.1f}$"
+        )
 
         ax.text(
             *self.fit_info_loc, text,

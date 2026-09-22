@@ -18,6 +18,7 @@ CUSTOM_PURPLE       = "#9B59B6"
 CUSTOM_ORANGE       = "#FFA500"
 CUSTOM_FAINTBLUE    = "#90b4ff"
 CUSTOM_MARKEDRED    = "#e63946"
+CUSTOM_MARKEDGREEN  = "#399b26"
 
 # -------------------------------------------------
 # Google palette
@@ -27,3 +28,4 @@ GOOGLE_BLUE         = "#4285f4"
 GOOGLE_RED          = "#ea4335"
 GOOGLE_YELLOW       = "#fbbc05"
 GOOGLE_GREEN        = "#34a853"
+GOOGLE_PURPLE       = "#673ab7"

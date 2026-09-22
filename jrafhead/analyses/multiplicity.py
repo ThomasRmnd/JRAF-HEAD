@@ -1,30 +1,31 @@
 from __future__ import annotations
+
 from datetime import datetime, timedelta
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
-
-from .base import BaseAnalysis
 from config import (
-    ReProd26B, 
+    ReProd26B,
 )
 from fits import (
-    FitResult, 
-    ExponentialRateFitter, 
+    ExponentialRateFitter,
+    FitResult,
 )
 from loader import (
-    load_multiplicity, 
-    load_lifetime_daq, 
+    load_lifetime_daq,
+    load_multiplicity,
 )
 from plotters import (
-    RunEvolutionPlotter, 
-    TimeEvolutionPlotter, 
+    RunEvolutionPlotter,
+    TimeEvolutionPlotter,
 )
 from utils import (
-    save_figure, 
-    uniform_bins, 
+    save_figure,
+    uniform_bins,
 )
+
+from .base import BaseAnalysis
 
 
 class MultiplicityAnalysis(BaseAnalysis):
@@ -74,7 +75,7 @@ class MultiplicityAnalysis(BaseAnalysis):
             hist, _ = np.histogram(ts_diff, bins=bins)
             err = np.sqrt(hist)
 
-            fitter = ExponentialRateFitter(centers, hist, err)
+            fitter = ExponentialRateFitter(bins, hist, err)
             results = fitter.fit()
             self._fit.append(results)
 

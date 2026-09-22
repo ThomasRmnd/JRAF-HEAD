@@ -84,6 +84,7 @@ class _EvolutionPlotterBase:
         show_mean:   bool                       = True,
         show_band:   bool                       = True,
         bar_mode:    bool                       = False,
+        show_grid:   bool                       = True,
         legend_ncol: int | None                 = None,
         legend_bbox: tuple[float, float]        = (0.5, 1.30),
     ) -> None:
@@ -95,6 +96,7 @@ class _EvolutionPlotterBase:
         self.show_mean    = show_mean
         self.show_band    = show_band
         self.bar_mode     = bar_mode
+        self.show_grid    = show_grid
         self.legend_ncol  = legend_ncol
         self.legend_bbox  = legend_bbox
         self.datasets: list[_EvolutionDataset] = []
@@ -308,7 +310,8 @@ class _EvolutionPlotterBase:
         ax.minorticks_on()
         self._configure_xaxis(ax)
         ax.yaxis.set_minor_locator(AutoMinorLocator(5))
-        ax.grid(which="major", linestyle="--", linewidth=0.5, alpha=0.7)
+        if self.show_grid:
+            ax.grid(which="major", linestyle="--", linewidth=0.5, alpha=0.7)
 
     def _draw_legend(self, ax: plt.Axes) -> None:
         labeled = [ds for ds in self.datasets if ds.label is not None]

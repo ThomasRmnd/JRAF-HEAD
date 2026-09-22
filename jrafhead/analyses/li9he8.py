@@ -12,6 +12,7 @@ from config import (
     BLACK,
     CUSTOM_BLUE,
     CUSTOM_DARKPINK,
+    CUSTOM_GREEN,
     CUSTOM_LIGHTBLUE,
     CUSTOM_MARKEDRED,
     CUSTOM_ORANGE,
@@ -49,6 +50,7 @@ from plotters import (
     PromptDelayedTimePlotter,
     PromptEnergyPlotter,
     RelativeUncertaintyPromptEnergyPlotter,
+    ShapeModelComparisonPlotter,
     SpatialDistributionPlotter,
 )
 from scipy.stats import chi2 as chi2_dist
@@ -169,9 +171,11 @@ class Li9He8RateAnalysis(BaseAnalysis):
         self._data_veto = load_lifetime_veto(str(self.filepath), str(self.dirpath_veto))
 
     def _plot(self) -> None:
-        self._plot_muon_veto()
-        self._plot_cosmo_rate_with_neu()
+        # self._plot_muon_veto()
         self._plot_cosmo_rate()
+        self._plot_cosmo_rate_no_he8()
+        self._plot_cosmo_rate_no_he8_50_ms()
+        self._plot_cosmo_rate_b12()
 
         del self._data_daq
         del self._data_veto
@@ -190,105 +194,575 @@ class Li9He8RateAnalysis(BaseAnalysis):
         save_figure(fig, self.stem, "_dt_dlat_p", output_dir=self.output_dir)
         plt.close(fig)
 
-    def _plot_cosmo_rate_with_neu(self) -> None:
+    def _plot_cosmo_rate(
+        self,
+        bin_counts: tuple[int] = (40, 50, 60, 75, 90, 100, 110, 125, 150, 175, 200),
+    ) -> None:
+        """Rate estimation fit including Li9 and He8 components, plus binning systematics."""
         from plotters import Li9He8RateEstimationPlotter
-    
-        bins    = uniform_bins(0.0, 10.0, 200)
-        widths  = bins[1:] - bins[:-1]
+
+        param_keys = [
+            ("N9li8he", "N9li8heerr"),
+            ("f9li", "f9lierr"),
+            ("Nbkg", "Nbkgerr"),
+            ("Rmu", "Rmuerr"),
+        ]
+
+        # 1. Nominal analysis at 100 bins (saves plots & JSONs)
+        self._run_rate_estimation_pipeline(
+            uniform_bins(0.007, 10.007, 100),
+            plotter_cls=Li9He8RateEstimationPlotter,
+            file_prefix="",
+            json_prefix="li9he8_rate_muon",
+            param_keys=param_keys,
+            eff_plot_suffix="_accompanying_efficiency",
+            save_output=True,
+        )
+
+        # 2. Binning Systematic Scan
+        self._plot_binning_systematics(
+            0.007, 10.007,
+            plotter_cls=Li9He8RateEstimationPlotter,
+            file_prefix="_li9he8",
+            param_keys=param_keys,
+            bin_counts=bin_counts,
+        )
+
+    def _plot_cosmo_rate_no_he8(
+        self,
+        bin_counts: tuple[int] = (40, 50, 60, 75, 90, 100, 110, 125, 150, 175, 200),
+    ) -> None:
+        """Rate estimation fit with Li9 only (no He8 component), plus binning systematics."""
+        from plotters import Li9RateEstimationPlotter
+
+        param_keys = [
+            ("N9li8he", "N9li8heerr"),
+            ("Nbkg", "Nbkgerr"),
+            ("Rmu", "Rmuerr"),
+        ]
+
+        # 1. Nominal analysis at 100 bins (saves plots & JSONs)
+        self._run_rate_estimation_pipeline(
+            uniform_bins(0.007, 10.007, 100),
+            plotter_cls=Li9RateEstimationPlotter,
+            file_prefix="_no_he8",
+            json_prefix="li9_rate_muon",
+            param_keys=param_keys,
+            eff_plot_suffix="_no_he8_accompanying_efficiency",
+            save_output=True,
+        )
+
+        # 2. Binning Systematic Scan
+        self._plot_binning_systematics(
+            0.007, 10.007,
+            plotter_cls=Li9RateEstimationPlotter,
+            file_prefix="_no_he8",
+            param_keys=param_keys,
+            bin_counts=bin_counts,
+        )
+
+    def _plot_cosmo_rate_no_he8_50_ms(
+        self,
+        bin_counts: tuple[int] = (40, 50, 60, 75, 90, 100, 110, 125, 150, 175, 200),
+    ) -> None:
+        """Rate estimation fit with Li9 only (no He8 component), plus binning systematics."""
+        from plotters import Li9RateEstimationPlotter
+
+        param_keys = [
+            ("N9li8he", "N9li8heerr"),
+            ("Nbkg", "Nbkgerr"),
+            ("Rmu", "Rmuerr"),
+        ]
+
+        # 1. Nominal analysis at 100 bins (saves plots & JSONs)
+        self._run_rate_estimation_pipeline(
+            uniform_bins(0.050, 10.050, 100),
+            plotter_cls=Li9RateEstimationPlotter,
+            file_prefix="_no_he8_50_ms",
+            json_prefix="li9_rate_muon",
+            param_keys=param_keys,
+            eff_plot_suffix="_no_he8_50_ms_accompanying_efficiency",
+            save_output=True,
+        )
+
+        # 2. Binning Systematic Scan
+        self._plot_binning_systematics(
+            0.050, 10.050,
+            plotter_cls=Li9RateEstimationPlotter,
+            file_prefix="_no_he8_50_ms",
+            param_keys=param_keys,
+            bin_counts=bin_counts,
+        )
+
+    def _plot_cosmo_rate_b12(
+        self,
+        bin_counts: tuple[int] = (40, 50, 60, 75, 90, 100, 110, 125, 150, 175, 200),
+    ) -> None:
+        """Rate estimation fit with Li9 only (no He8 component), plus binning systematics."""
+        from plotters import Li9B12RateEstimationPlotter
+
+        param_keys = [
+            ("N12b", "B12berr"),
+            ("N9li8he", "N9li8heerr"),
+            ("Nbkg", "Nbkgerr"),
+            ("Rmu", "Rmuerr"),
+        ]
+
+        # 1. Nominal analysis at 100 bins (saves plots & JSONs)
+        self._run_rate_estimation_pipeline(
+            uniform_bins(0.007, 10.007, 100),
+            plotter_cls=Li9B12RateEstimationPlotter,
+            file_prefix="_b12",
+            json_prefix="li9_rate_muon",
+            param_keys=param_keys,
+            eff_plot_suffix="_b12_accompanying_efficiency",
+            save_output=True,
+        )
+
+        # 2. Binning Systematic Scan
+        self._plot_binning_systematics(
+            0.007, 10.007,
+            plotter_cls=Li9B12RateEstimationPlotter,
+            file_prefix="_b12",
+            param_keys=param_keys,
+            bin_counts=bin_counts,
+        )
+
+    # -------------------------------------------------------------------------
+    # Core Pipeline
+    # -------------------------------------------------------------------------
+
+    def _run_rate_estimation_pipeline(
+        self,
+        bins:            np.ndarray,
+        plotter_cls:     type,
+        file_prefix:     str,
+        json_prefix:     str,
+        param_keys:      list[tuple[str, str]],
+        eff_plot_suffix: str = "",
+        save_output:     bool = True,
+    ) -> dict | None:
+        """Runs fits across all distance cuts for a given binning.
+
+        Returns summary metrics (N9li8he yield and mean efficiency).
+        """
+        widths = bins[1:] - bins[:-1]
+        lifetime = np.sum(self._data_daq.duration_sec) / 24.0 / 3600.0
+
+        n9li_neu, n9li_neu_err = [], []
+        n9li_tot, n9li_tot_err = [], []
+
+        n9li_uncut_val, n9li_uncut_err = None, None
+
         for k in range(11):
-            if k == 0:
-                dt = self._data.dt_last_mu_with_neu
-                suffix = ""
-            else:
-                dt = getattr(self._data, f"dt_last_mu_with_neu_{k}m")
-                suffix = f"_{k}m"
+            is_all = k == 0
+            suffix = "" if is_all else f"_{k}m"
+            legend_loc = "center right" if is_all else "lower right"
 
-            hist, _ = np.histogram(dt, bins=bins)
-            err = np.sqrt(hist)
-            hist = hist / widths
-            err = err / widths
-
-            plotter = Li9He8RateEstimationPlotter(
-                bins=bins,
-                xlim=(bins[0], bins[-1]),
-                ylabel=f"Entries / {widths[0]:g}~s",
-                yscale="log", 
-                ylim=(0.7, 2.0 * np.max(hist)), 
+            dt_neu = (
+                self._data.dt_last_mu_with_neu
+                if is_all
+                else getattr(self._data, f"dt_last_mu_with_neu_{k}m")
             )
-            plotter.add_histogram(hist, err, linecolor=BLACK, fillcolor=BLACK)
-            fig, _ = plotter.plot()
-            save_figure(fig, self.stem, f"_dt_last_mu_with_neu{suffix}", output_dir=self.output_dir)
-            plt.close(fig)
-
-            lifetime = np.sum(self._data_daq.duration_sec) / 24.0 / 3600.0
-
-            if not plotter.fit_result:
-                return
-
-            key = f"{k}m"
-            data = {
-                "N9li8he":      plotter.fit_result.popt[0],
-                "N9li8heerr":   plotter.fit_result.perr[0],
-                "Nbkg":         plotter.fit_result.popt[1],
-                "Nbkgerr":      plotter.fit_result.perr[1],
-                "Rmu":          plotter.fit_result.popt[2],
-                "Rmuerr":       plotter.fit_result.perr[2],
-                "chi2":         plotter.fit_result.chi2,
-                "ndf":          plotter.fit_result.ndf,
-                "pvalue":       plotter.fit_result.pvalue,
-                "lifetime":     lifetime,
-            }
-            save_json(data, key, "li9he8_rate_muon_with_neu", "", output_dir="output/data")
-
-    def _plot_cosmo_rate(self) -> None:
-        from plotters import Li9He8RateEstimationPlotter
-        
-        bins    = uniform_bins(0.0, 10.0, 200)
-        widths  = bins[1:] - bins[:-1]
-        for k in range(11):
-            if k == 0:
-                dt = self._data.dt_last_mu
-                suffix = ""
-            else:
-                dt = getattr(self._data, f"dt_last_mu_{k}m")
-                suffix = f"_{k}m"
-
-            hist, _ = np.histogram(dt, bins=bins)
-            err = np.sqrt(hist)
-            hist = hist / widths
-            err = err / widths
-
-            plotter = Li9He8RateEstimationPlotter(
-                bins=bins,
-                xlim=(bins[0], bins[-1]),
-                ylabel=f"Entries / {widths[0]:g}~s",
-                yscale="log", 
-                ylim=(0.7, 2.0 * np.max(hist)), 
+            dt_tot = (
+                self._data.dt_last_mu
+                if is_all
+                else getattr(self._data, f"dt_last_mu_{k}m")
             )
-            plotter.add_histogram(hist, err, linecolor=BLACK, fillcolor=BLACK)
+
+            # Fit dataset with neutrons
+            res_neu = self._fit_and_save_histogram(
+                dt_array=dt_neu,
+                bins=bins,
+                widths=widths,
+                plotter_cls=plotter_cls,
+                file_tag=f"{file_prefix}_dt_last_mu_with_neu{suffix}",
+                json_tag=f"{json_prefix}_with_neu",
+                key=f"{k}m",
+                legend_loc=legend_loc,
+                lifetime=lifetime,
+                param_keys=param_keys,
+                save_output=save_output,
+            )
+            if res_neu is None:
+                return None
+
+            # Fit total dataset
+            res_tot = self._fit_and_save_histogram(
+                dt_array=dt_tot,
+                bins=bins,
+                widths=widths,
+                plotter_cls=plotter_cls,
+                file_tag=f"{file_prefix}_dt_last_mu{suffix}",
+                json_tag=json_prefix,
+                key=f"{k}m",
+                legend_loc=legend_loc,
+                lifetime=lifetime,
+                param_keys=param_keys,
+                save_output=save_output,
+            )
+            if res_tot is None:
+                return None
+
+            if is_all:
+                n9li_uncut_val, n9li_uncut_err = res_neu[0], res_neu[1]
+            else:
+                n9li_neu.append(res_neu[0])
+                n9li_neu_err.append(res_neu[1])
+                n9li_tot.append(res_tot[0])
+                n9li_tot_err.append(res_tot[1])
+
+        # Compute efficiency ratio vector y_k = N_neu / N_tot
+        n9li_neu = np.asarray(n9li_neu)
+        n9li_tot = np.asarray(n9li_tot)
+        y = n9li_neu / n9li_tot
+        yerr = y * np.sqrt(
+            (np.asarray(n9li_neu_err) / n9li_neu) ** 2
+            + (np.asarray(n9li_tot_err) / n9li_tot) ** 2
+        )
+
+        mean_eff = np.mean(y) * 100.0  # In %
+        stat_eff = (np.sqrt(np.sum(yerr**2)) / len(y)) * 100.0  # In %
+        syst_eff = np.std(y, ddof=1) * 100.0 # In %
+
+        # Render efficiency curve if in save_output mode
+        if save_output:
+            self._plot_efficiency_curve(
+                y=y,
+                yerr=yerr,
+                fig_suffix=eff_plot_suffix,
+            )
+
+        return {
+            "bin_width": widths[0],
+            "n9li8he": n9li_uncut_val,
+            "n9li8he_err": n9li_uncut_err,
+            "mean_eff": mean_eff,
+            "stat_eff": stat_eff,
+            "syst_eff": syst_eff,
+        }
+
+    def _fit_and_save_histogram(
+        self,
+        dt_array: np.ndarray,
+        bins: np.ndarray,
+        widths: np.ndarray,
+        plotter_cls: type,
+        file_tag: str,
+        json_tag: str,
+        key: str,
+        legend_loc: str,
+        lifetime: float,
+        param_keys: list[tuple[str, str]],
+        save_output: bool = True,
+    ) -> tuple[float, float] | None:
+        """Helper to create histogram, run plotter fit, save plot and output json."""
+        hist, _ = np.histogram(dt_array, bins=bins)
+        err = np.sqrt(hist) / widths
+        hist = hist / widths
+
+        plotter = plotter_cls(
+            bins=bins,
+            xlim=(0.0, 10.0),
+            ylabel=f"Entries / {widths[0]:g}~s",
+            yscale="log",
+            ylim=(0.7, 2.0 * np.max(hist)),
+            legend_loc=legend_loc,
+        )
+        plotter.add_histogram(hist, err, linecolor=BLACK, fillcolor=BLACK, label="Data")
+
+        if save_output:
             fig, _ = plotter.plot()
-            save_figure(fig, self.stem, f"_dt_last_mu{suffix}", output_dir=self.output_dir)
+            save_figure(fig, self.stem, file_tag, output_dir=self.output_dir)
             plt.close(fig)
+        else:
+            plotter.plot()
+            plt.close("all")
 
-            lifetime = np.sum(self._data_daq.duration_sec) / 24.0 / 3600.0
+        fit_res = plotter.fit_result
+        if not fit_res:
+            return None
 
-            if not plotter.fit_result:
-                return
-
-            key = f"{k}m"
+        if save_output:
             data = {
-                "N9li8he":      plotter.fit_result.popt[0],
-                "N9li8heerr":   plotter.fit_result.perr[0],
-                "Nbkg":         plotter.fit_result.popt[1],
-                "Nbkgerr":      plotter.fit_result.perr[1],
-                "Rmu":          plotter.fit_result.popt[2],
-                "Rmuerr":       plotter.fit_result.perr[2],
-                "chi2":         plotter.fit_result.chi2,
-                "ndf":          plotter.fit_result.ndf,
-                "pvalue":       plotter.fit_result.pvalue,
-                "lifetime":     lifetime,
+                val_key: fit_res.popt[i]
+                for i, (val_key, _) in enumerate(param_keys)
             }
-            save_json(data, key, "li9he8_rate_muon", "", output_dir="output/data")
+            data.update(
+                {err_key: fit_res.perr[i] for i, (_, err_key) in enumerate(param_keys)}
+            )
+            data.update(
+                {
+                    "chi2": fit_res.chi2,
+                    "ndf": fit_res.ndf,
+                    "pvalue": fit_res.pvalue,
+                    "lifetime": lifetime,
+                }
+            )
+            save_json(data, key, json_tag, "", output_dir=self.output_dir / "data")
+
+        n9li_idx = next(
+            (i for i, (val_key, _) in enumerate(param_keys) if "n9li" in val_key.lower()),
+            0,  # Fallback to index 0 if not found
+        )
+
+        return fit_res.popt[n9li_idx], fit_res.perr[n9li_idx]
+
+    # -------------------------------------------------------------------------
+    # Binning Systematic Evaluation
+    # -------------------------------------------------------------------------
+
+    def _plot_binning_systematics(
+        self,
+        xmin:        float,
+        xmax:        float,
+        plotter_cls: type,
+        file_prefix: str,
+        param_keys:  list[tuple[str, str]],
+        bin_counts:  tuple[int],
+    ) -> None:
+        """Evaluates fit stability against choice of binning and plots N9li8he & Efficiency."""
+        bin_widths, n9li_vals, n9li_errs = [], [], []
+        eff_vals, eff_stat, eff_syst = [], [], []
+
+        # Run pipeline over all binning configurations
+        for nbins in bin_counts:
+            res = self._run_rate_estimation_pipeline(
+                uniform_bins(xmin, xmax, nbins),
+                plotter_cls=plotter_cls,
+                file_prefix=file_prefix,
+                json_prefix="",
+                param_keys=param_keys,
+                save_output=False,
+            )
+            if res is None:
+                continue
+
+            bin_widths.append(res["bin_width"])
+            n9li_vals.append(res["n9li8he"])
+            n9li_errs.append(res["n9li8he_err"])
+            eff_vals.append(res["mean_eff"])
+            eff_stat.append(res["stat_eff"])
+            eff_syst.append(res["syst_eff"])
+
+        if not bin_widths:
+            return
+
+        bin_widths = np.asarray(bin_widths)
+        n9li_vals = np.asarray(n9li_vals)
+        n9li_errs = np.asarray(n9li_errs)
+        eff_vals = np.asarray(eff_vals)
+        eff_stat = np.asarray(eff_stat)
+        eff_syst = np.asarray(eff_syst)
+        eff_tot  = np.sqrt(eff_stat**2 + eff_syst**2)
+
+        # Plot N9li8he and Efficiency vs Bin Width in a 2-panel figure
+        fig1, ax1 = plt.subplots(figsize=(7, 6))
+        fig2, ax2 = plt.subplots(figsize=(7, 6))
+
+        # ---------------------------------------------------------------------
+        # Panel 1: N9li8he Yield
+        # ---------------------------------------------------------------------
+        mean_n9li  = np.mean(n9li_vals)
+        syst_n9li  = np.std(n9li_vals, ddof=1)
+        n9li_max   = np.argmax(n9li_vals)
+        n9li_min   = np.argmin(n9li_vals)
+        n9li_upbnd = n9li_vals[n9li_max] + n9li_errs[n9li_max]
+        n9li_lwbnd = n9li_vals[n9li_min] - n9li_errs[n9li_min]
+        n9li_width = n9li_upbnd - n9li_lwbnd
+        ylim       = (n9li_lwbnd - n9li_width / 2.0, n9li_upbnd + n9li_width / 2.0)
+
+        # Error bar
+        ax1.errorbar(
+            bin_widths,
+            n9li_vals,
+            yerr=n9li_errs,
+            fmt="none",
+            ecolor=CUSTOM_BLUE,
+            elinewidth=2.0,
+            capsize=4,
+            capthick=2.0,
+            zorder=2,
+        )
+        # Custom marker
+        ax1.plot(
+            bin_widths,
+            n9li_vals,
+            marker="o",
+            linestyle="none",
+            markerfacecolor="white",
+            markeredgecolor=CUSTOM_BLUE,
+            markeredgewidth=2.0,
+            markersize=8,
+            zorder=4,
+            label="Fit per binning",
+        )
+
+        ax1.axhline(
+            mean_n9li,
+            color=BLACK,
+            linestyle="--",
+            linewidth=1.5,
+            label=rf"Mean: ${mean_n9li:.1f} \pm {syst_n9li:.1f}_{{\rm syst}}$",
+        )
+        ax1.axhspan(
+            mean_n9li - syst_n9li,
+            mean_n9li + syst_n9li,
+            color="black",
+            alpha=0.1,
+            label=r"$\pm 1\sigma_{\rm syst}$ Band",
+        )
+        ax1.set_ylabel(r"Fitted $N_{{^{9}\mathrm{Li}/^{8}\mathrm{He}}}$")
+        ax1.set_ylim(*ylim)
+        ax1.grid(which="major", linestyle="--", linewidth=0.5, alpha=0.7)
+        ax1.minorticks_on()
+        ax1.tick_params(direction="in", which="both", top=True, right=True)
+        ax1.legend(loc="best")
+
+        # ---------------------------------------------------------------------
+        # Panel 2: Neutron Accompanying Efficiency
+        # ---------------------------------------------------------------------
+        mean_eff  = np.mean(eff_vals)
+        syst_eff  = np.std(eff_vals, ddof=1)
+        eff_max   = np.argmax(eff_vals)
+        eff_min   = np.argmin(eff_vals)
+        eff_upbnd = eff_vals[eff_max] + eff_tot[eff_max]
+        eff_lwbnd = eff_vals[eff_min] - eff_tot[eff_min]
+        eff_width = eff_upbnd - eff_lwbnd
+        ylim      = (eff_lwbnd - eff_width / 2.0, eff_upbnd + eff_width / 2.0)
+
+        # Error bar
+        ax2.errorbar(
+            bin_widths,
+            eff_vals,
+            yerr=eff_tot,
+            fmt="none",
+            ecolor=CUSTOM_BLUE,
+            elinewidth=2.0,
+            capsize=5,
+            capthick=2.0,
+            zorder=2,
+        )
+        ax2.errorbar(
+            bin_widths,
+            eff_vals,
+            yerr=eff_stat,
+            fmt="none",
+            ecolor=BLACK,
+            elinewidth=4.0,
+            capsize=0,
+            capthick=0,
+            zorder=3,
+        )
+        # Custom marker
+        ax2.plot(
+            bin_widths,
+            eff_vals,
+            marker="o",
+            linestyle="none",
+            markerfacecolor="white",
+            markeredgecolor=CUSTOM_BLUE,
+            markeredgewidth=2.0,
+            markersize=8,
+            zorder=4,
+            label="Efficiency per binning",
+        )
+
+        ax2.axhline(
+            mean_eff,
+            color=BLACK,
+            linestyle="--",
+            linewidth=1.5,
+            label=rf"Mean: ${mean_eff:.2f} \pm {syst_eff:.2f}_{{\rm syst}}\,\%$",
+        )
+        ax2.axhspan(
+            mean_eff - syst_eff,
+            mean_eff + syst_eff,
+            color="black",
+            alpha=0.1,
+            label=r"$\pm 1\sigma_{\rm syst}$ Band",
+        )
+        ax2.set_ylabel(r"$\bar{\epsilon}_{n}$ (\%)")
+        ax2.set_xlabel(r"Bin Width $\Delta t$ (s)")
+        ax2.set_ylim(*ylim)
+        ax2.grid(which="major", linestyle="--", linewidth=0.5, alpha=0.7)
+        ax2.minorticks_on()
+        ax2.tick_params(direction="in", which="both", top=True, right=True)
+        ax2.legend(loc="best")
+
+        fig1.tight_layout()
+        save_figure(
+            fig1,
+            self.stem,
+            f"{file_prefix}_binning_systematic",
+            output_dir=self.output_dir,
+        )
+        plt.close(fig1)
+        fig2.tight_layout()
+        save_figure(
+            fig2,
+            self.stem,
+            f"{file_prefix}_binning_systematic_efficiency",
+            output_dir=self.output_dir,
+        )
+        plt.close(fig2)
+
+    # -------------------------------------------------------------------------
+    # Helper Plotters
+    # -------------------------------------------------------------------------
+
+    def _plot_efficiency_curve(
+        self,
+        y: np.ndarray,
+        yerr: np.ndarray,
+        fig_suffix: str,
+    ) -> None:
+        """Calculates neutron accompanying efficiency ratio and renders output plot."""
+        x = np.linspace(1.0, 10.0, 10)
+
+        mean = np.mean(y)
+        stat = np.sqrt(np.sum(yerr**2)) / len(y)
+        syst = np.std(y, ddof=1)
+
+        fig, ax = plt.subplots(figsize=(7, 6))
+
+        ax.errorbar(
+            x,
+            y * 100.0,
+            yerr * 100.0,
+            fmt="o",
+            color=CUSTOM_BLUE,
+            markersize=4.5,
+            zorder=3,
+        )
+        ax.axhline(
+            mean * 100.0,
+            label=(
+                rf"$\bar{{\epsilon}} = {100.0*mean:.2f}"
+                rf"\pm{100.0*stat:.2f}_{{\rm stat}}"
+                rf"\pm{100.0*syst:.2f}_{{\rm syst}}\,\%$"
+            ),
+            color=BLACK,
+            linestyle="--",
+            linewidth=2.0,
+            zorder=2,
+        )
+
+        ax.set_xlabel(r"$d_{\mu-p}$ cut (m)")
+        ax.set_ylabel(r"$\epsilon_{n}$ (\%)")
+        ax.set_xlim(0.0, 11.0)
+        ax.set_ylim(80.0, 100.0)
+
+        ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+        ax.yaxis.set_minor_locator(AutoMinorLocator(5))
+        ax.minorticks_on()
+        ax.tick_params(direction="in", which="both", top=True, right=True)
+        ax.grid(which="major", linestyle="--", linewidth=0.5, alpha=0.7)
+        ax.legend(loc="lower right")
+
+        fig.tight_layout()
+        save_figure(fig, self.stem, fig_suffix, output_dir=self.output_dir)
+        plt.close(fig)
 
 
 class Li9He8ShapeAnalysis(BaseAnalysis):
@@ -341,32 +815,33 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
         self._data_veto     = load_lifetime_veto(str(self.filepath), str(self.dirpath_veto))
 
     def _plot(self) -> None:
-        # self._plot_prompt_energy_nmo()
-        # self._plot_prompt_energy_207days()
-        # self._plot_prompt_energy_normal_sig()
-        # self._plot_prompt_energy_normal_bkg()
-        # self._plot_prompt_energy_normal()
-        # self._plot_relative_uncertainty_prompt_energy_nmo()
-        # self._plot_relative_uncertainty_prompt_energy_207days()
-        # self._plot_relative_uncertainty_prompt_energy_normal()
-        # self._plot_prompt_energy_diff_mc_group()
-        # self._plot_prompt_energy_diff_mc_chengzhuo()
-        # self._plot_prompt_energy_diff_mc_chengzhuo_smearing()
-        # self._plot_delayed_energy_sig()
-        # self._plot_delayed_energy_bkg()
-        # self._plot_delayed_energy_diff()
-        # self._plot_dt_sig()
-        # self._plot_dt_bkg()
-        # self._plot_dt_diff()
-        # self._plot_dr_sig()
-        # self._plot_dr_bkg()
-        # self._plot_dr_diff()
-        # self._plot_spatial()
-        # self._plot_muon_veto()
-        # self._plot_cosmo_rate_with_neu()
-        # self._plot_cosmo_rate()
-        if "li9he8_shape_muon__standard__analysis__cdwpttchi2_3m_2s_" in str(self.dirpath):
-            self._fraction_fitter()
+        self._plot_prompt_energy_nmo()
+        self._plot_prompt_energy_207days()
+        self._plot_prompt_energy_normal_sig()
+        self._plot_prompt_energy_normal_bkg()
+        self._plot_prompt_energy_normal()
+        self._plot_relative_uncertainty_prompt_energy_nmo()
+        self._plot_relative_uncertainty_prompt_energy_207days()
+        self._plot_relative_uncertainty_prompt_energy_normal()
+        self._plot_prompt_energy_diff_mc_chengzhuo_group_smearing()
+        self._plot_prompt_energy_diff_mc_group()
+        self._plot_prompt_energy_diff_mc_chengzhuo()
+        self._plot_prompt_energy_diff_mc_chengzhuo_smearing()
+        self._plot_delayed_energy_sig()
+        self._plot_delayed_energy_bkg()
+        self._plot_delayed_energy_diff()
+        self._plot_dt_sig()
+        self._plot_dt_bkg()
+        self._plot_dt_diff()
+        self._plot_dr_sig()
+        self._plot_dr_bkg()
+        self._plot_dr_diff()
+        self._plot_spatial()
+        self._plot_muon_veto()
+        self._plot_cosmo_rate_with_neu()
+        self._plot_cosmo_rate()
+        # if "li9he8_shape_muon__standard__analysis__cdwpttchi2_3m_2s_" in str(self.dirpath):
+            # self._fraction_fitter()
 
         del self._data_daq
         del self._data_veto
@@ -421,22 +896,24 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
         tot_lifetime = tot_daq.to_sec() / 3600.0 / 24.0
 
         _DAYS_PER_YEAR = 365.25
-        periods_days   = [tot_lifetime, 325.0] + [n * _DAYS_PER_YEAR for n in range(2, 11, 2)]
-        labels         = [f"{int(tot_lifetime)} days", "325 days"] + [f"{n} years" for n in range(2, 11, 2)]
-        cmap   = plt.get_cmap("rainbow")
+        periods_days   = [tot_lifetime]                + [n * _DAYS_PER_YEAR for n in range(2, 11, 4)]
+        labels         = [f"{int(tot_lifetime)} days"] + [f"{n} years" for n in range(2, 11, 4)]
+        cmap   = plt.get_cmap("YlGnBu")
         colors = [
-            mcolors.to_hex(cmap(i / (len(periods_days) - 1)))
+            mcolors.to_hex(cmap(0.3 + 0.5 * i / (len(periods_days) - 1)))
             for i in range(len(periods_days))
         ]
 
         sig, _ = np.histogram(self._sig.e_p, bins=PROMPT_ENERGY_BINS_NMO)
         bkg, _ = np.histogram(self._bkg.e_p, bins=PROMPT_ENERGY_BINS_NMO)
-        tot    = sig - bkg
-        toterr = np.sqrt(sig + bkg)
+        tot    = (sig - bkg).astype(float)
+        toterr = np.sqrt(sig + bkg).astype(float)
 
-        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="nmo")
+        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="nmo", show_steps=True)
+        data = {}
         for Y_days, label, color in zip(periods_days, labels, colors):
             relerr = relative_uncertainty_rescale(tot, toterr, Y_days, tot_lifetime)
+            data[label] = relerr.tolist()
             plotter.add_histogram(
                 relerr, np.zeros_like(relerr),
                 color, linestyle="-", label=label,
@@ -444,28 +921,31 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
         fig, _ = plotter.plot()
         save_figure(fig, self.stem, "_relative_uncertainty_nmo", output_dir=self.output_dir)
         plt.close(fig)
+        save_json(data, "nmo", self.stem, "_relative_uncertainty_e_p", output_dir=self.output_dir / "data")
 
     def _plot_relative_uncertainty_prompt_energy_207days(self) -> None:
         tot_daq      = np.sum([Timestamp(sec, nsec) for sec, nsec in zip(self._data_daq.duration_sec, self._data_daq.duration_nsec)])
         tot_lifetime = tot_daq.to_sec() / 3600.0 / 24.0
 
         _DAYS_PER_YEAR = 365.25
-        periods_days   = [tot_lifetime, 325.0] + [n * _DAYS_PER_YEAR for n in range(2, 11, 2)]
-        labels         = [f"{int(tot_lifetime)} days", "325 days"] + [f"{n} years" for n in range(2, 11, 2)]
-        cmap   = plt.get_cmap("rainbow")
+        periods_days   = [tot_lifetime]                + [n * _DAYS_PER_YEAR for n in range(2, 11, 4)]
+        labels         = [f"{int(tot_lifetime)} days"] + [f"{n} years" for n in range(2, 11, 4)]
+        cmap   = plt.get_cmap("YlGnBu")
         colors = [
-            mcolors.to_hex(cmap(i / (len(periods_days) - 1)))
+            mcolors.to_hex(cmap(0.3 + 0.5 * i / (len(periods_days) - 1)))
             for i in range(len(periods_days))
         ]
 
         sig, _ = np.histogram(self._sig.e_p, bins=PROMPT_ENERGY_BINS_207DAYS)
         bkg, _ = np.histogram(self._bkg.e_p, bins=PROMPT_ENERGY_BINS_207DAYS)
-        tot    = sig - bkg
-        toterr = np.sqrt(sig + bkg)
+        tot    = (sig - bkg).astype(float)
+        toterr = np.sqrt(sig + bkg).astype(float)
 
-        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="207days")
+        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="207days", show_steps=True)
+        data = {}
         for Y_days, label, color in zip(periods_days, labels, colors):
             relerr = relative_uncertainty_rescale(tot, toterr, Y_days, tot_lifetime)
+            data[label] = relerr.tolist()
             plotter.add_histogram(
                 relerr, np.zeros_like(relerr),
                 color, linestyle="-", label=label,
@@ -473,34 +953,87 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
         fig, _ = plotter.plot()
         save_figure(fig, self.stem, "_relative_uncertainty_207days", output_dir=self.output_dir)
         plt.close(fig)
+        save_json(data, "207days", self.stem, "_relative_uncertainty_e_p", output_dir=self.output_dir / "data")
 
     def _plot_relative_uncertainty_prompt_energy_normal(self) -> None:
+        bins = uniform_bins(0.0, 12.0, 120)
+
         tot_daq      = np.sum([Timestamp(sec, nsec) for sec, nsec in zip(self._data_daq.duration_sec, self._data_daq.duration_nsec)])
         tot_lifetime = tot_daq.to_sec() / 3600.0 / 24.0
 
         _DAYS_PER_YEAR = 365.25
-        periods_days   = [tot_lifetime, 325.0] + [n * _DAYS_PER_YEAR for n in range(2, 11, 2)]
-        labels         = [f"{int(tot_lifetime)} days", "325 days"] + [f"{n} years" for n in range(2, 11, 2)]
-        cmap   = plt.get_cmap("rainbow")
+        periods_days   = [tot_lifetime]                + [n * _DAYS_PER_YEAR for n in range(2, 11, 4)]
+        labels         = [f"{int(tot_lifetime)} days"] + [f"{n} years" for n in range(2, 11, 4)]
+        cmap   = plt.get_cmap("YlGnBu")
         colors = [
-            mcolors.to_hex(cmap(i / (len(periods_days) - 1)))
+            mcolors.to_hex(cmap(0.3 + 0.5 * i / (len(periods_days) - 1)))
             for i in range(len(periods_days))
         ]
 
-        sig, _ = np.histogram(self._sig.e_p, bins=PROMPT_ENERGY_BINS_UNIFORM)
-        bkg, _ = np.histogram(self._bkg.e_p, bins=PROMPT_ENERGY_BINS_UNIFORM)
-        tot    = sig - bkg
-        toterr = np.sqrt(sig + bkg)
+        sig, _ = np.histogram(self._sig.e_p, bins=bins)
+        bkg, _ = np.histogram(self._bkg.e_p, bins=bins)
+        tot    = (sig - bkg).astype(float)
+        toterr = np.sqrt(sig + bkg).astype(float)
 
-        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="normal", legend_loc="upper center", legend_ncol=2)
+        plotter = RelativeUncertaintyPromptEnergyPlotter(binmode="normal", bins=bins, show_steps=True, legend_loc="upper center", legend_ncol=2)
+        data = {}
         for Y_days, label, color in zip(periods_days, labels, colors):
             relerr = relative_uncertainty_rescale(tot, toterr, Y_days, tot_lifetime)
+            data[label] = relerr.tolist()
             plotter.add_histogram(
                 relerr, np.zeros_like(relerr),
                 color, linestyle="-", label=label,
             )
         fig, _ = plotter.plot()
         save_figure(fig, self.stem, "_relative_uncertainty_normal", output_dir=self.output_dir)
+        plt.close(fig)
+        save_json(data, "normal", self.stem, "_relative_uncertainty_e_p", output_dir=self.output_dir / "data")
+
+    def _plot_prompt_energy_diff_mc_chengzhuo_group_smearing(self) -> None:
+        from loader import (
+            load_mc_chengzhuo_template,
+            load_mc_groupc_template,
+        )
+
+        template_groupc    = load_mc_groupc_template(self.mc_groupc_path, hist_path="prefit/lihe")
+        template_chengzhuo = load_mc_chengzhuo_template(self.mc_chengzhuo_path)
+
+        plotter      = Li9He8ShapeGroupCFitPlotter(template_groupc, binmode="normal")
+        bins         = plotter.bins
+        xlim         = plotter.xlim
+        xlabel       = plotter.xlabel
+        plotter.add_diff(self._sig.e_p, self._bkg.e_p, linecolor=BLACK, fillcolor=BLACK, label=r"Estimation")
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_e_p_diff_mc_groupc_fit", output_dir=self.output_dir)
+        plt.close(fig)
+        model_groupc = plotter._y_fit
+
+        plotter = Li9He8ChengzhuoFitPlotter(template_chengzhuo, binmode="normal")
+        plotter.add_diff(self._sig.e_p, self._bkg.e_p, linecolor=BLACK, fillcolor=BLACK, label=r"Estimation")
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_e_p_diff_mc_chengzhuo_fit", output_dir=self.output_dir)
+        plt.close(fig)
+        model_chengzhuo = plotter._y_fit
+
+        plotter = Li9He8ChengzhuoFitSmearingPlotter(template_chengzhuo, binmode="normal")
+        plotter.add_diff(self._sig.e_p, self._bkg.e_p, linecolor=BLACK, fillcolor=BLACK, label=r"Estimation")
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_e_p_diff_mc_chengzhuo_fit_smearing", output_dir=self.output_dir)
+        plt.close(fig)
+        model_smearing = plotter._y_fit
+
+        plotter = ShapeModelComparisonPlotter(
+            bins, xlim, xlabel,
+            [model_groupc, model_chengzhuo, model_smearing],
+            [CUSTOM_GREEN, CUSTOM_BLUE,     CUSTOM_RED    ],
+            ["-",          "-",             "-"           ],
+            [None,         None,            None          ],
+            [0.15,         0.15,            0.15          ],
+            ["Initial",    "Reference",     "Smoothed"    ],
+        )
+        plotter.add_diff(self._sig.e_p, self._bkg.e_p, linecolor=BLACK, fillcolor=BLACK, label=r"Estimation")
+        fig, _ = plotter.plot()
+        save_figure(fig, self.stem, "_e_p_diff_comparison_groupc_chengzhuo_smearing", output_dir=self.output_dir)
         plt.close(fig)
 
     def _plot_prompt_energy_diff_mc_group(self) -> None:
@@ -538,16 +1071,22 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
 
         if not plotter.fit_result:
             return
-        with uproot.recreate(f"{self.output_dir}/data/{self.dirpath}_mc_chengzhuo_fit_smearing.root") as output_file:
-            N, f0, f1, f2, f3 = plotter._fit_result.popt
+        with uproot.recreate(f"{self.output_dir}/data/{self.dirpath}_extracted_shape.root") as output_file:
+            N, f0, f1, f2, f3 = plotter.fit_result.popt
             f4 = 0.508 - f0 - f1 - f2 - f3
+
+            hist0 = template.branch0.counts / np.sum(template.branch0.counts * np.diff(template.branch0.edges))
+            hist1 = template.branch1.counts / np.sum(template.branch1.counts * np.diff(template.branch1.edges))
+            hist2 = template.branch2.counts / np.sum(template.branch2.counts * np.diff(template.branch2.edges))
+            hist3 = template.branch3.counts / np.sum(template.branch3.counts * np.diff(template.branch3.edges))
+            hist4 = template.branch4.counts / np.sum(template.branch4.counts * np.diff(template.branch4.edges))
         
             fitted_counts = N * (
-                f0 * template.branch0.counts
-                + f1 * template.branch1.counts
-                + f2 * template.branch2.counts
-                + f3 * template.branch3.counts
-                + f4 * template.branch4.counts
+                f0 * hist0
+                + f1 * hist1
+                + f2 * hist2
+                + f3 * hist3
+                + f4 * hist4
             )
         
             # Fitted spectrum
@@ -560,43 +1099,43 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
             output_file["signal_events"] = {
                 "run_id":     self._sig.run_id,
                 "e_p":        self._sig.e_p,
-                "e_d":        self._sig.e_d,
                 "posx_p":     self._sig.pos_p_mm[:, 0],
                 "posy_p":     self._sig.pos_p_mm[:, 1],
                 "posz_p":     self._sig.pos_p_mm[:, 2],
-                "dt_p_d_ms":  self._sig.dt_p_d_ms,
-                "dt_mu2p":    self._sig.dt_mu2p,
-                "dlat_mu2p":  self._sig.dlat_mu2p,
+                "sec_p":      self._sig.ts_p[:, 0],
+                "nsec_p":     self._sig.ts_p[:, 1],
+                "e_d":        self._sig.e_d,
                 "posx_d":     self._sig.pos_d_mm[:, 0],
                 "posy_d":     self._sig.pos_d_mm[:, 1],
                 "posz_d":     self._sig.pos_d_mm[:, 2],
-                "dt_mu2d":    self._sig.dt_mu2d,
-                "dlat_mu2d":  self._sig.dlat_mu2d,
+                "sec_d":      self._sig.ts_d[:, 0],
+                "nsec_d":     self._sig.ts_d[:, 1],
             }
 
             # Background candidates
-            output_file["background_events"] = {
-                "run_id":     self._bkg.run_id,
-                "e_p":        self._bkg.e_p,
-                "e_d":        self._bkg.e_d,
-                "posx_p":     self._bkg.pos_p_mm[:, 0],
-                "posy_p":     self._bkg.pos_p_mm[:, 1],
-                "posz_p":     self._bkg.pos_p_mm[:, 2],
-                "dt_p_d_ms":  self._bkg.dt_p_d_ms,
-                "dt_mu2p":    self._bkg.dt_mu2p,
-                "dlat_mu2p":  self._bkg.dlat_mu2p,
-                "posx_d":     self._bkg.pos_d_mm[:, 0],
-                "posy_d":     self._bkg.pos_d_mm[:, 1],
-                "posz_d":     self._bkg.pos_d_mm[:, 2],
-                "dt_mu2d":    self._bkg.dt_mu2d,
-                "dlat_mu2d":  self._bkg.dlat_mu2d,
-            }
+            if "__changing_veto__" not in str(self.dirpath):
+                output_file["background_events"] = {
+                    "run_id":     self._bkg.run_id,
+                    "e_p":        self._bkg.e_p,
+                    "posx_p":     self._bkg.pos_p_mm[:, 0],
+                    "posy_p":     self._bkg.pos_p_mm[:, 1],
+                    "posz_p":     self._bkg.pos_p_mm[:, 2],
+                    "sec_p":      self._bkg.ts_p[:, 0],
+                    "nsec_p":     self._bkg.ts_p[:, 1],
+                    "e_d":        self._bkg.e_d,
+                    "posx_d":     self._bkg.pos_d_mm[:, 0],
+                    "posy_d":     self._bkg.pos_d_mm[:, 1],
+                    "posz_d":     self._bkg.pos_d_mm[:, 2],
+                    "sec_d":      self._bkg.ts_d[:, 0],
+                    "nsec_d":     self._bkg.ts_d[:, 1],
+                }
 
             # Raw spectrum
             binnings = {
-                "uniform": PROMPT_ENERGY_BINS_UNIFORM,
-                "207days": PROMPT_ENERGY_BINS_207DAYS,
-                "nmo": PROMPT_ENERGY_BINS_NMO,
+                "spectrum": uniform_bins(0.0, 12.0, 12000)
+                # "uniform": PROMPT_ENERGY_BINS_UNIFORM,
+                # "207days": PROMPT_ENERGY_BINS_207DAYS,
+                # "nmo": PROMPT_ENERGY_BINS_NMO,
             }
 
             for name, bins in binnings.items():
@@ -616,10 +1155,11 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
                     bins,
                 )
 
-                output_file[f"background_{name}"] = (
-                    background_counts,
-                    bins,
-                )
+                if "__changing_veto__" not in str(self.dirpath):
+                    output_file[f"background_{name}"] = (
+                        background_counts,
+                        bins,
+                    )
 
     def _plot_delayed_energy_sig(self) -> None:
         plotter = DelayedEnergyPlotter(ylim=(0.7, None), yscale="log")
@@ -752,27 +1292,6 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
             save_figure(fig, self.stem, "_dt_last_mu_with_neu", output_dir=self.output_dir)
             plt.close(fig)
 
-            lifetime = np.sum(self._data_daq.duration_sec) / 24.0 / 3600.0
-
-            if not plotter.fit_result:
-                return
-            radius = extract_window(str(self.dirpath), 'm')
-            time   = extract_window(str(self.dirpath), 's')
-            key    = f"_{radius:g}m_{time:g}s_".replace(".", "_")
-            data = {
-                "N9li8he":      plotter.fit_result.popt[0],
-                "N9li8heerr":   plotter.fit_result.perr[0],
-                "Nbkg":         plotter.fit_result.popt[1],
-                "Nbkgerr":      plotter.fit_result.perr[1],
-                "Rmu":          plotter.fit_result.popt[2],
-                "Rmuerr":       plotter.fit_result.perr[2],
-                "chi2":         plotter.fit_result.chi2,
-                "ndf":          plotter.fit_result.ndf,
-                "pvalue":       plotter.fit_result.pvalue,
-                "lifetime":     lifetime,
-            }
-            save_json(data, key, "cosmo_rate_with_neu", "", output_dir="output/data")
-
     def _plot_cosmo_rate(self) -> None:
             from plotters import Li9He8RateEstimationPlotter
         
@@ -794,24 +1313,6 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
             save_figure(fig, self.stem, "_dt_last_mu", output_dir=self.output_dir)
             plt.close(fig)
 
-            if not plotter.fit_result:
-                return
-            radius = extract_window(str(self.dirpath), 'm')
-            time   = extract_window(str(self.dirpath), 's')
-            key    = f"_{radius:g}m_{time:g}s_".replace(".", "_")
-            data = {
-                "N9li8he":      plotter.fit_result.popt[0],
-                "N9li8heerr":   plotter.fit_result.perr[0],
-                "Nbkg":         plotter.fit_result.popt[1],
-                "Nbkgerr":      plotter.fit_result.perr[1],
-                "Rmu":          plotter.fit_result.popt[2],
-                "Rmuerr":       plotter.fit_result.perr[2],
-                "chi2":         plotter.fit_result.chi2,
-                "ndf":          plotter.fit_result.ndf,
-                "pvalue":       plotter.fit_result.pvalue
-            }
-            save_json(data, key, "cosmo_rate", "", output_dir="output/data")
-
     def _fraction_fitter(self) -> None:
         from loader import load_mc_9li8he_cosmogenics, load_mc_chengzhuo_template
         from utils import rebin_histogram
@@ -825,6 +1326,10 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
         dtcenters = (dtbins[1:] + dtbins[:-1]) / 2.0
         ewidths   = ebins[1:]  - ebins[:-1]
         dtwidths  = dtbins[1:] - dtbins[:-1]
+
+        threshold     = 0.007 # s
+        first_fit_bin = np.searchsorted(dtbins, threshold, side="left")
+        dtxlim_fit    = (dtbins[first_fit_bin], extract_window(str(self.dirpath), 's'))
 
         hesig, _  = np.histogram(self._sig.e_p, bins=ebins)
         hebkg, _  = np.histogram(self._bkg.e_p, bins=ebins)
@@ -868,10 +1373,6 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
         hhe8    = hhe8  / np.sum(hhe8  * ewidths)
         hebkg   = hebkg / np.sum(hebkg * ewidths)
 
-        threshold       = 0.007 # ms
-        first_fit_bin   = np.searchsorted(dtbins, threshold, side="left")
-        dtxlim_fit = (dtbins[first_fit_bin], extract_window(str(self.dirpath), 's'))
-
         fitter = Li9He8ContrainedFractionFitter(
             hebkg, hli9, hhe8, 
             ebins, hesig, eesig, 
@@ -888,15 +1389,18 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
         if result is None:
             return
         
-        names = ["N", "fbkg", "f9li", "t9li", "t8he"]
+        # names = ["N", "fbkg", "f9li", "t9li", "t8he"]
+        names = ["fbkg", "f9li", "t9li", "t8he"]
         print("Fit fraction:")
         print(f"  P(chi^2 / ndf = {result.chi2:.3f} / {result.ndf}) = {result.pvalue:.3f}")
         print(f"    chi^2 / ndf = {(result.chi2 / result.ndf):.3f}")
         for name, par, err in zip(names, result.popt, result.perr):
             print(f"  {name} = {par:.3f} +/- {err:.3f}")
 
-        N,    fbkg,    f9li,   = result.popt
-        Nerr, fbkgerr, f9lierr = result.perr
+        fbkg,    f9li,   = result.popt
+        fbkgerr, f9lierr = result.perr
+        # N,    fbkg,    f9li,   = result.popt
+        # Nerr, fbkgerr, f9lierr = result.perr
         # N,    fbkg,    f9li,    t9li,    t8he    = result.popt
         # Nerr, fbkgerr, f9lierr, t9lierr, t8heerr = result.perr
 
@@ -915,7 +1419,7 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
             data = {}
 
         data[key] = {
-            "N":    {"value": float(N),    "error": float(Nerr)}, 
+            # "N":    {"value": float(N),    "error": float(Nerr)}, 
             "fbkg": {"value": float(fbkg), "error": float(fbkg)}, 
             "f9li": {"value": float(f9li), "error": float(f9li)}, 
             # "t9li": {"value": float(t9li), "error": float(t9li)}, 
@@ -930,14 +1434,14 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
 
         text = (
             r"$P(\chi^{2} / \mathrm{ndf} = %.1f / %d) = %.3f$" "\n"
-            r"$N = %.1f \pm %.1f$"                             "\n"
+            # r"$N = %.1f \pm %.1f$"                             "\n"
             r"$f_{\mathrm{bkg}} = %.2f \pm %.2f$"              "\n"
             r"$f_{^{9}\mathrm{Li}} = %.2f \pm %.2f$"
         ) % (
             result.chi2, result.ndf, result.pvalue,
             result.popt[0], result.perr[0],
             result.popt[1], result.perr[1],
-            result.popt[2], result.perr[2],
+            # result.popt[2], result.perr[2],
         )
 
         # -------------------------------------------------
@@ -946,16 +1450,16 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
 
         fig1, ax1 = plt.subplots(figsize=(7, 6))
 
-        ebkg_fit = N * fbkg * hebkg
-        e9li_fit = N * (1.0 - fbkg) * f9li * hli9
-        e8he_fit = N * (1.0 - fbkg) * (1.0 - f9li) * hhe8
-        etot_fit = fitter.model_energy_full(ecenters, N, fbkg, f9li)
+        ebkg_fit = fitter.eN * fbkg * hebkg
+        e9li_fit = fitter.eN * (1.0 - fbkg) * f9li * hli9
+        e8he_fit = fitter.eN * (1.0 - fbkg) * (1.0 - f9li) * hhe8
+        etot_fit = fitter.model_energy_full(ecenters, fitter.eN, fbkg, f9li)
 
         emask   = eesig > 0
         echi2   = np.sum(
             ((hesig[emask] - etot_fit[emask]) / eesig[emask]) ** 2
         )
-        endf    = np.count_nonzero(emask) - 3
+        endf    = np.count_nonzero(emask) - fitter.n_params
         epvalue = chi2_dist.sf(echi2, endf)
         print("Energy:")
         print(f"  P(chi^2 / ndf = {echi2:.3f} / {endf}) = {epvalue:.3f}")
@@ -1031,15 +1535,15 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
 
         t9li = 0.256
         t8he = 0.171
-        dtbkg_fit = model_time_bkg(dtcenters, N, fbkg, dtxlim[0], dtxlim[1])
-        dt9li_fit = model_time_9li(dtcenters, N, fbkg, f9li, t9li, dtxlim[0], dtxlim[1])
-        dt8he_fit = model_time_8he(dtcenters, N, fbkg, f9li, t8he, dtxlim[0], dtxlim[1])
-        dttot_fit = fitter.model_time(dtcenters, N, fbkg, f9li)
+        dtbkg_fit = model_time_bkg(dtcenters, fitter.dtN, fbkg, fitter.tmin, fitter.tmax)
+        dt9li_fit = model_time_9li(dtcenters, fitter.dtN, fbkg, f9li, t9li, fitter.tmin, fitter.tmax)
+        dt8he_fit = model_time_8he(dtcenters, fitter.dtN, fbkg, f9li, t8he, fitter.tmin, fitter.tmax)
+        dttot_fit = fitter.model_time(dtcenters, fitter.dtN, fbkg, f9li)
 
         dtmask   = edtsig > 0
         dtmask   &= ( (dtxlim_fit[0] <= dtcenters) & (dtcenters <= dtxlim_fit[1]) )
         dtchi2   = np.sum(((hdtsig[dtmask] - dttot_fit[dtmask]) / edtsig[dtmask]) ** 2)
-        dtndf    = np.count_nonzero(dtmask) - 3
+        dtndf    = np.count_nonzero(dtmask) - fitter.n_params
         dtpvalue = chi2_dist.sf(dtchi2, dtndf)
         print("Time:")
         print(f"  P(chi^2 / ndf = {dtchi2:.3f} / {dtndf}) = {dtpvalue:.3f}")
@@ -1110,13 +1614,13 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
         # Contour
         # -------------------------------------------------
 
-        def chi2_from_params(N_: float, fbkg_: float, f9li_: float) -> np.ndarray: #, t9li_: float, t8he_: float) -> tuple[np.ndarray]:
-            emodel = fitter.model_energy_full(ecenters, N_, fbkg_, f9li_)
+        def chi2_from_params(fbkg_: float, f9li_: float) -> np.ndarray: #, t9li_: float, t8he_: float) -> tuple[np.ndarray]:
+            emodel = fitter.model_energy_full(ecenters, fitter.eN, fbkg_, f9li_)
             echi2 = np.sum(
                 ((hesig[emask] - emodel[emask]) / eesig[emask])**2
             )
 
-            dtmodel = fitter.model_time(dtcenters, N_, fbkg_, f9li_) # , t9li_, t8he_)
+            dtmodel = fitter.model_time(dtcenters, fitter.dtN, fbkg_, f9li_) # , t9li_, t8he_)
             dtchi2 = np.sum(
                 ((hdtsig[dtmask] - dtmodel[dtmask]) / edtsig[dtmask])**2
             )
@@ -1127,7 +1631,7 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
         def plot_1d_contour(best: float, besterr: float, index: int, label: str) -> tuple[plt.Figure, plt.Axes]:
             xlim = (np.max([0.0, best - 3.0 * besterr]), best + 3.0 * besterr)
 
-            x = uniform_bins(*xlim, 200)
+            x = uniform_bins(0.0, 1.5, 1500)
 
             echi2   = np.empty_like(x)
             dtchi2  = np.empty_like(x)
@@ -1274,9 +1778,9 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
             r9min: float, r9max: float,
             r8min: float, r8max: float,
         ) -> tuple[plt.Figure, plt.Axes]:
-            N_       = result.popt[0]
-            fbkg_    = result.popt[1]
-            f9li_    = result.popt[2]
+            N_       = fitter.eN # result.popt[0]
+            fbkg_    = result.popt[0]
+            f9li_    = result.popt[1]
             # li_    = result.popt[3]
             # he_    = result.popt[4]
 
@@ -1301,7 +1805,7 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
                     _f9li = br9li * R9[iy, ix] / (br9li * R9[iy, ix] + br8he * R8[iy, ix])
 
                     _, _, chi2[iy, ix] = chi2_from_params(
-                        _N,
+                        # _N,
                         fbkg_,
                         _f9li,
                         # t9li_,
@@ -1363,35 +1867,35 @@ class Li9He8ShapeAnalysis(BaseAnalysis):
             fig.tight_layout()
             return fig, ax
 
-        fig, _ = plot_1d_contour(N,    Nerr,    0, r"$N$")
-        save_figure(fig, self.stem, "_ratio_contour_N", output_dir=self.output_dir)
-        plt.close(fig)
+        # fig, _ = plot_1d_contour(N,    Nerr,    0, r"$N$")
+        # save_figure(fig, self.stem, "_ratio_contour_N", output_dir=self.output_dir)
+        # plt.close(fig)
 
-        fig, _ = plot_1d_contour(fbkg, fbkgerr, 1, r"$f_{\mathrm{bkg}}$")
+        fig, _ = plot_1d_contour(fbkg, fbkgerr, 0, r"$f_{\mathrm{bkg}}$")
         save_figure(fig, self.stem, "_ratio_contour_fbkg", output_dir=self.output_dir)
         plt.close(fig)
 
-        fig, _ = plot_1d_contour(f9li, f9lierr, 2, r"$f_{^9\mathrm{Li}}$")
+        fig, _ = plot_1d_contour(f9li, f9lierr, 1, r"$f_{^9\mathrm{Li}}$")
         save_figure(fig, self.stem, "_ratio_contour_f9li", output_dir=self.output_dir)
         plt.close(fig)
 
-        fig, _ = plot_2d_contour(
-            N,    Nerr,    0, r"$N$",
-            fbkg, fbkgerr, 1, r"$f_{\mathrm{bkg}}$", 
-        )
-        save_figure(fig, self.stem, "_ratio_contour_N_fbkg", output_dir=self.output_dir)
-        plt.close(fig)
+        # fig, _ = plot_2d_contour(
+        #     N,    Nerr,    0, r"$N$",
+        #     fbkg, fbkgerr, 1, r"$f_{\mathrm{bkg}}$", 
+        # )
+        # save_figure(fig, self.stem, "_ratio_contour_N_fbkg", output_dir=self.output_dir)
+        # plt.close(fig)
+
+        # fig, _ = plot_2d_contour(
+        #     N,    Nerr,    0, r"$N$",
+        #     f9li, f9lierr, 2, r"$f_{^9\mathrm{Li}}$", 
+        # )
+        # save_figure(fig, self.stem, "_ratio_contour_N_f9li", output_dir=self.output_dir)
+        # plt.close(fig)
 
         fig, _ = plot_2d_contour(
-            N,    Nerr,    0, r"$N$",
-            f9li, f9lierr, 2, r"$f_{^9\mathrm{Li}}$", 
-        )
-        save_figure(fig, self.stem, "_ratio_contour_N_f9li", output_dir=self.output_dir)
-        plt.close(fig)
-
-        fig, _ = plot_2d_contour(
-            fbkg, fbkgerr, 1, r"$f_{\mathrm{bkg}}$", 
-            f9li, f9lierr, 2, r"$f_{^9\mathrm{Li}}$", 
+            fbkg, fbkgerr, 0, r"$f_{\mathrm{bkg}}$", 
+            f9li, f9lierr, 1, r"$f_{^9\mathrm{Li}}$", 
         )
         save_figure(fig, self.stem, "_ratio_contour_fbkg_f9li", output_dir=self.output_dir)
         plt.close(fig)

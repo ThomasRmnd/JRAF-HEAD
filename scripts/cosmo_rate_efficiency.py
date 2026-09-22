@@ -13,6 +13,7 @@ from jrafhead.utils import extract_window
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str, help="Input JSON file contaning rate")
 parser.add_argument("--input-neutron", type=str, help="Input JSON file containing rate with neutron")
+parser.add_argument("--output-dir", type=str, help="Base output path for the plots")
 args = parser.parse_args()
 
 set_latex_style()
@@ -38,12 +39,8 @@ Rmu_neutron_dict        = {}
 Rmuerr_neutron_dict     = {}
 
 for key, values in data.items():
-    r_str, t_str = key.split("m_")
-
-    r = extract_window(r_str + "m_", 'm')
-    t = extract_window("_" + t_str, 's')
-
-    if t != 10:
+    r = extract_window("_" + key + "_", 'm')
+    if r == 0:
         continue
 
     radius_dict[key]     = r
@@ -55,12 +52,8 @@ for key, values in data.items():
     Rmuerr_dict[key]     = values["Rmuerr"]
 
 for key, values in data_neutron.items():
-    r_str, t_str = key.split("m_")
-
-    r = extract_window(r_str + "m_", 'm')
-    t = extract_window("_" + t_str, 's')
-
-    if t != 10:
+    r = extract_window("_" + key + "_", 'm')
+    if r == 0:
         continue
 
     N9li8he_neutron_dict[key]    = values["N9li8he"]
@@ -129,12 +122,12 @@ mean = np.mean(y)
 stat  = np.sqrt(np.sum(yerr**2)) / len(y)
 syst  = np.std(y, ddof=1)
 
-print(f"Global ==> Efficiency = {mean} +/- {stat} stat +/- {syst} sel")
+print(f"Global ==> Efficiency = {mean} +/- {stat} stat +/- {syst} syst")
 
 xlabel = r"$d_{\mu-p}$ cut (m)"
 ylabel = r"$\epsilon_{n}$ (\%)"
 xlim   = (0.0, 11.0)
-ylim   = (None, 100.0)
+ylim   = (80.0, 100.0)
 xscale = "linear"
 yscale = "linear"
 
@@ -150,7 +143,7 @@ ax.axhline(
     label=(
         rf"$\bar{{\epsilon}} = {100.0*mean:.1f}"
         rf"\pm{100.0*stat:.1f}_{{\rm stat}}"
-        rf"\pm{100.0*syst:.1f}_{{\rm sel}}\,\%$"
+        rf"\pm{100.0*syst:.1f}_{{\rm syst}}\,\%$"
     ),
     color=BLACK, linestyle="--", linewidth=2.0, zorder=2,
 )
@@ -181,6 +174,8 @@ ax.grid(which="major", linestyle="--", linewidth=0.5, alpha=0.7)
 ax.legend(loc="lower right")
 
 fig.tight_layout()
-fig.show()
+fig.savefig(f"{args.output_dir}/png/neutron_accompanying_efficiency.png")
+fig.savefig(f"{args.output_dir}/pdf/neutron_accompanying_efficiency.pdf")
+plt.close(fig)
 
 plt.show()

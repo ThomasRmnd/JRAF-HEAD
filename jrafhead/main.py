@@ -18,6 +18,8 @@ from jrafhead.analyses import (
     LifetimeDAQAnalysis,
     LifetimeVetoAnalysis,
     MultiplicityAnalysis,
+    MuonLengthAnalysis,
+    MuonMultiplicityAnalysis,
     MuonPerformanceAnalysis,
     MuonRateAnalysis,
 )
@@ -25,7 +27,7 @@ from jrafhead.config import (
     setup_style,
 )
 
-__version__ = "1.0.6"
+__version__ = "1.0.8"
 
 ANALYSES = {
     # "ibd_": (
@@ -34,12 +36,12 @@ ANALYSES = {
     #         "lifetime_veto__total_time__analysis"
     #     )
     # ), 
-    # "li9he8_rate_": (
-    #     Li9He8RateAnalysis, (
-    #         "lifetime_daq__total_time__analysis", 
-    #         "lifetime_veto__total_time__analysis"
-    #     )
-    # ), 
+    "li9he8_rate_": (
+        Li9He8RateAnalysis, (
+            "lifetime_daq__total_time__analysis", 
+            "lifetime_veto__total_time__analysis"
+        )
+    ), 
     # "li9he8_shape_": (
     #     Li9He8ShapeAnalysis, (
     #         "lifetime_daq__total_time__analysis", 
@@ -58,11 +60,21 @@ ANALYSES = {
     # "lifetime_veto_": (
     #     LifetimeVetoAnalysis, ()
     # ), 
-    "muon_performance_": (
-        MuonPerformanceAnalysis, (
-            "lifetime_daq__total_time__analysis",
-        )
-    ), 
+    # "muon_performance_": (
+    #     MuonPerformanceAnalysis, (
+    #         "lifetime_daq__total_time__analysis",
+    #     )
+    # ), 
+    # "muon_length_": (
+    #     MuonLengthAnalysis, (
+    #         "lifetime_daq__total_time__analysis",
+    #     )
+    # ), 
+    # "muon_multiplicity_": (
+    #     MuonMultiplicityAnalysis, (
+    #         "lifetime_daq__total_time__analysis",
+    #     )
+    # ), 
     # "muon_rate_": (
     #     MuonRateAnalysis, (
     #         "lifetime_daq__total_time__analysis",
@@ -140,14 +152,8 @@ def main() -> None:
     setup_style(no_latex=args.no_latex)
 
     for directory in dirs:
-        if (
-            directory.startswith("li9he8_shape_muon__standard__analysis__") and
-            directory != "li9he8_shape_muon__standard__analysis__cdwpttchi2_3m_1_2s__omilrec_jvertex" and
-            directory != "li9he8_shape_muon__standard__analysis__cdwpttchi2_3m_2s__omilrec_jvertex" and
-            not directory.endswith("_10s__omilrec_jvertex")
-        ):
-        # if "li9he8_shape_muon__standard__analysis__cdwpttchi2_3m_2s_" not in directory:
-            continue
+        # if directory != "li9he8_rate_muon__no_mult_veto_ls_muon__analysis__omilrec_jvertex":
+            # continue
         for prefix, (analysis_cls, extra_args) in ANALYSES.items():
             if prefix in directory:
                 kwargs = {"output_dir": f"{args.output_dir}/{directory}"}

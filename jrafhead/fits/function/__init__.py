@@ -1,36 +1,28 @@
-from .base import (
-    BaseFitter,
-    FitResult,
-)
-from .function import (
+from .constant import (
+    ConstantDensityFitter,
     ConstantFitter,
-    CubicFitter,
+)
+from .exponential import (
     ExponentialConstantDensityFitter,
     ExponentialConstantFitter,
     ExponentialDensityFitter,
     ExponentialFitter,
     ExponentialRateDensityFitter,
     ExponentialRateFitter,
-    GaussianDensityFitter,
-    GaussianFitter,
+)
+from .functions import (  # TODO: Need to change that!
+    CubicFitter,
     Li9B12RateEstimationFitter,
     Li9He8RateEstimationFitter,
     Li9RateEstimationFitter,
 )
-from .joint import (
-    Li9He8ChengzhuoFitter,
-    Li9He8ContrainedFractionFitter,
-    Li9He8FractionFitter,
-    model_time_8he,
-    model_time_9li,
-    model_time_bkg,
-)
-from .template import (
-    TemplateAmplitudeFitter,
+from .gaussian import (
+    GaussianDensityFitter,
+    GaussianFitter,
 )
 
 __all__ = [
-    "BaseFitter",
+    "ConstantDensityFitter",
     "ConstantFitter",
     "CubicFitter",
     "ExponentialConstantDensityFitter",
@@ -39,17 +31,9 @@ __all__ = [
     "ExponentialFitter",
     "ExponentialRateDensityFitter",
     "ExponentialRateFitter",
-    "FitResult",
     "GaussianDensityFitter",
     "GaussianFitter",
     "Li9B12RateEstimationFitter",
-    "Li9He8ChengzhuoFitter",
-    "Li9He8ContrainedFractionFitter",
-    "Li9He8FractionFitter",
     "Li9He8RateEstimationFitter",
     "Li9RateEstimationFitter",
-    "TemplateAmplitudeFitter",
-    "model_time_8he",
-    "model_time_9li",
-    "model_time_bkg",
 ]

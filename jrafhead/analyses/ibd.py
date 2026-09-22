@@ -89,6 +89,7 @@ class IBDAnalysis(BaseAnalysis):
         self._plot_dr()
         self._plot_spatial()
         self._plot_muon_veto()
+        self._plot_muon_veto_high_prompt_energy()
         self._plot_cosmo_rate_with_neu()
         self._plot_cosmo_rate()
         self._plot_rate_by_run()
@@ -174,6 +175,20 @@ class IBDAnalysis(BaseAnalysis):
         save_figure(fig, self.stem, "_dt_dlat_p", output_dir=self.output_dir)
         plt.close(fig)
 
+    def _plot_muon_veto_high_prompt_energy(self) -> None:
+        plotter = MuonVetoDistributionPlotter(
+            _MUON_VETO_XBINS,
+            _MUON_VETO_YBINS,
+            xlabel=r"$\Delta t_{\mu-p}$ (s)", 
+            ylabel=r"$d_{\mu-p}$ (m)", 
+            is_signal_region=True, 
+            fit_info_fontsize=11, 
+            fit_info_loc=(0.95, 0.85), 
+        )
+        fig, _ = plotter.plot(self._data.dt_mu2p[self._data.e_p > 8.0], self._data.dlat_mu2p[self._data.e_p > 8.0])
+        save_figure(fig, self.stem, "_dt_dlat_p_high_e_p", output_dir=self.output_dir)
+        plt.close(fig)
+
     def _plot_cosmo_rate_with_neu(self) -> None:
         from plotters import Li9He8RateEstimationPlotter
 
@@ -189,8 +204,9 @@ class IBDAnalysis(BaseAnalysis):
             ylabel=f"Entries / {widths[0]:g}~s",
             yscale="log", 
             ylim=(0.7, 2.0 * np.max(hist)), 
+            legend_loc="center right",
         )
-        plotter.add_histogram(hist, err, linecolor=BLACK, fillcolor=BLACK)
+        plotter.add_histogram(hist, err, linecolor=BLACK, fillcolor=BLACK) # label="Data"
         fig, _ = plotter.plot()
         save_figure(fig, self.stem, "_dt_last_mu_with_neu", output_dir=self.output_dir)
         plt.close(fig)
@@ -307,10 +323,12 @@ class IBDAnalysis(BaseAnalysis):
 
         plotter = TimeEvolutionPlotter(
             r"IBD rate (cpd)", 
+            date_format="%Y-%m", 
             ylim=(0.0, None),
             mode="sum", 
             show_mean=False, 
             show_band=False,
+            show_grid=False,
             legend_ncol=2,
         )
 
