@@ -29,11 +29,10 @@ def calculate_juno_yield(
         N9li_syst:    float,
         eff_neu:      float,
         eff_neu_stat: float,
-        eff_neu_syst: float, 
-        mult_eff:     float = 1.0, 
+        eff_neu_syst: float,
+        params:       dict[str, float],
+        mult_eff:     float = 1.0,
         mult_eff_unc: float = 0.0,
-        Lmu:          float = 2203.0,
-        Lmu_err:      float = 7.0
     ):
     """Calculates 9Li yield and uncertainties for a specific configuration."""
     print(f"Fitted number of beta-n decay 9Li: {N9li:.1f} +/- {N9li_stat:.1f}")
@@ -63,7 +62,8 @@ def calculate_juno_yield(
         0.9994,  # Delayed energy
         0.96636, # Prompt-delayed time
         0.99,    # Prompt-delayed distance
-        0.9378,  # Muon veto
+        0.9530,  # Muon veto
+        # 0.9378,  # Muon veto
         mult_eff # Multiplicity veto
     ])
     eff_rel_unc = np.array([
@@ -81,7 +81,7 @@ def calculate_juno_yield(
     eff_sel_unc     = eff_sel * eff_sel_rel_unc
     print(f"Full efficiency: {eff_sel} +/- {eff_sel_unc}")
 
-    Bbn, Bbn_err     = 0.508,  0.009
+    Bbn, Bbn_err     = params["Bbn"], params["Bbn_err"]
 
     R_prod      = (R9li * sec_per_day) / (eff_sel * Bbn)
     R_prod_stat = (R9li_stat * sec_per_day) / (eff_sel * Bbn)
@@ -93,10 +93,10 @@ def calculate_juno_yield(
     R_prod_syst = R_prod * rel_R_prod_syst
     print(f"Total production rate of 9Li: {R_prod:.1f} +/- {R_prod_stat:.1f} (stat) +/- {R_prod_syst:.1f} (syst) day^-1")
 
-    Rmu, Rmu_err     = 4.27,   0.03
-    ntrk, ntrk_err   = 1.148,  0.003
-    
-    rhoLS, rhoLS_err = 0.856,  0.001
+    Rmu, Rmu_err   =   params["Rmu"],   params["Rmu_err"]
+    ntrk, ntrk_err =   params["ntrk"],  params["ntrk_err"]
+    Lmu, Lmu_err   =   params["Lmu"],   params["Lmu_err"]
+    rhoLS, rhoLS_err = params["rhoLS"], params["rhoLS_err"]
 
     # Value
     Y = R9li / (Rmu * ntrk * Lmu * rhoLS * Bbn * eff_sel)
@@ -193,9 +193,20 @@ regimes = [
 
 # 3. Generate studies map
 studies = {}
+params = {
+    "Bbn":       0.508, "Bbn_err":   0.009,
+    "Rmu":       4.27,  "Rmu_err":   0.03,
+    # "ntrk":      1.148, "ntrk_err":  0.003, # value from data
+    "ntrk":      1.11,  "ntrk_err":  0.0, # value from MC
+    "rhoLS":     0.856, "rhoLS_err": 0.001,
+}
 for (reg_id, base_tick, color, label, kwargs), (trk_id, Lmu, Lmu_err, offset, style) in product(regimes, tracks):
+    print("###########################################")
     print(f"Yield for {reg_id}__{trk_id} configuration")
-    Y, Y_stat, Y_syst, Y_tot = calculate_juno_yield(**kwargs, Lmu=Lmu, Lmu_err=Lmu_err)
+    print("###########################################")
+    params["Lmu"] = Lmu
+    params["Lmu_err"] = Lmu_err
+    Y, Y_stat, Y_syst, Y_tot = calculate_juno_yield(**kwargs, params=params)
     
     studies[f"{reg_id}__{trk_id}"] = {
         "Y": Y, "Y_stat": Y_stat, "Y_syst": Y_syst, "Y_tot": Y_tot,
@@ -205,8 +216,10 @@ for (reg_id, base_tick, color, label, kwargs), (trk_id, Lmu, Lmu_err, offset, st
 # Adopt the Multiplicity with 9Li/8He cosmogenic efficiency estimation as a baseline
 # - no_multiplicity__cdwpttchi2_wpclassify
 # - no_multiplicity__mc
-Y_juno     = studies["no_multiplicity__mc"]["Y"]
-Y_juno_err = studies["no_multiplicity__mc"]["Y_tot"]
+# - multiplicity_efficiency_cosmo__mc
+# - multiplicity_efficiency_cosmo__cdwpttchi2_wpclassify
+Y_juno     = studies["multiplicity_efficiency_cosmo__cdwpttchi2_wpclassify"]["Y"]
+Y_juno_err = studies["multiplicity_efficiency_cosmo__cdwpttchi2_wpclassify"]["Y_tot"]
 
 #########################
 ### Other experiments ###
